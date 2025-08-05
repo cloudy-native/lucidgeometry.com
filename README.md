@@ -1,38 +1,30 @@
-# Vite & HeroUI Template
+# Lucid Geometry
 
-This is a template for creating applications using Vite and HeroUI (v2).
-
-[Try it on CodeSandbox](https://githubbox.com/frontio-ai/vite-template)
+Lucid Geometry is a digital canvas for exploring the surprising beauty that emerges from simple, rule-based systems. It's a modern, three-dimensional evolution of the classic Spirograph, built for the web.
 
 ## Technologies Used
 
-- [Vite](https://vitejs.dev/guide/)
-- [HeroUI](https://heroui.com)
-- [Tailwind CSS](https://tailwindcss.com)
-- [Tailwind Variants](https://tailwind-variants.org)
-- [TypeScript](https://www.typescriptlang.org)
-- [Framer Motion](https://www.framer.com/motion)
+- [React](https://react.dev/)
+- [Three.js](https://threejs.org/) & [React Three Fiber](https://docs.pmnd.rs/react-three-fiber/getting-started/introduction)
+- [Vite](https://vitejs.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [HeroUI](https://heroui.com/)
 
 ## How to Use
 
-To clone the project, run the following command:
-
-```bash
-git clone https://github.com/frontio-ai/vite-template.git
-```
-
 ### Install dependencies
 
-You can use one of them `npm`, `yarn`, `pnpm`, `bun`, Example using `npm`:
+Use your preferred package manager (`npm`, `yarn`, `pnpm`, `bun`). Example using `pnpm`:
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Run the development server
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### Setup pnpm (optional)
