@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MousePointer2, ZoomIn, Move } from 'lucide-react';
+import { Dice5, Move, MousePointer2, Share2, ZoomIn } from "lucide-react";
 import Canvas, { Segment } from "@/components/Canvas";
 import SegmentEditor from "@/components/SegmentEditor";
 import DefaultLayout from "@/layouts/default";
@@ -150,6 +150,16 @@ export default function IndexPage() {
   return (
     <DefaultLayout>
       <div className="flex flex-col h-full">
+        <div className="text-center pt-8 pb-4">
+          <h1 className="text-4xl md:text-5xl font-bold mb-2">Lucid Geometry</h1>
+          <p className="text-gray-400 flex items-center justify-center space-x-1.5">
+            <span>Click</span>
+            <Dice5 className="inline-block h-5 w-5" />
+            <span>for a random config, set the background and material. Click</span>
+            <Share2 className="inline-block h-5 w-5" />
+            <span>to share.</span>
+          </p>
+        </div>
         <div className="bg-gray-800 text-gray-300 p-2 rounded-lg mb-4 text-xs flex items-center justify-center space-x-4 md:space-x-6">
           <div className="flex items-center space-x-2">
             <MousePointer2 size={14} />
