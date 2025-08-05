@@ -1,10 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import { generatePathPoints } from "@/utils/path";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
-import { generatePathPoints } from "@/utils/path";
 
-interface ExtendedMaterialProps extends THREE.MeshStandardMaterialParameters {
+interface ExtendedMaterialProps extends THREE.MeshPhysicalMaterialParameters {
   transmission?: number;
 }
 
@@ -53,11 +53,11 @@ export const availableMaterials: MaterialProperties[] = [
     name: "Glass",
     props: {
       color: new THREE.Color(0xffffff),
-      metalness: 0.1,
-      roughness: 0.05,
-      transmission: 1.0,
+      metalness: 0.5,
+      roughness: 0.1,
+      transmission: 0.95,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.95,
     },
   },
   {
@@ -69,17 +69,6 @@ export const availableMaterials: MaterialProperties[] = [
       roughness: 0.8,
       transmission: 0.0,
       transparent: false,
-    },
-  },
-  {
-    key: "neon",
-    name: "Neon",
-    props: {
-      color: new THREE.Color(0x00ff00),
-      metalness: 0.0,
-      roughness: 0.0,
-      transmission: 1.0,
-      transparent: true,
     },
   },
 ];
@@ -104,6 +93,14 @@ const Canvas: React.FC<CanvasProps> = ({
   hdri,
   material,
 }) => {
+  useEffect(() => {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load("/textures/scratches.jpg", (texture) => {
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+    });
+  }, []);
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -174,7 +171,7 @@ const Canvas: React.FC<CanvasProps> = ({
     controls.enableDamping = true;
     controlsRef.current = controls;
 
-    const tubeMaterial = new THREE.MeshStandardMaterial({
+    const tubeMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       metalness: 0.9,
       roughness: 0.2,
@@ -270,9 +267,15 @@ const Canvas: React.FC<CanvasProps> = ({
     const selectedMaterial = availableMaterials.find((m) => m.key === material);
 
     if (selectedMaterial) {
-      const newMaterial = new THREE.MeshStandardMaterial(
+      const newMaterial = new THREE.MeshPhysicalMaterial(
         selectedMaterial.props
       );
+
+      // if (selectedMaterial.key === 'gold' && scratchTexture) {
+      //   newMaterial.bumpMap = scratchTexture;
+      //   newMaterial.bumpScale = 0.1; // Adjust for subtle effect
+      // }
+
       tubeMesh.material = newMaterial;
     }
   }, [material]);
