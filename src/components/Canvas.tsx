@@ -1,5 +1,6 @@
 import { generatePathPoints } from "@/utils/path";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Maximize, Minimize } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
@@ -14,62 +15,217 @@ export interface MaterialProperties {
   props: ExtendedMaterialProps;
 }
 
-export const availableMaterials: MaterialProperties[] = [
+export interface MaterialSection {
+  title: string;
+  materials: MaterialProperties[];
+}
+
+export const materialSections: MaterialSection[] = [
   {
-    key: "silver",
-    name: "Silver",
-    props: {
-      color: new THREE.Color(0xffffff),
-      metalness: 0.9,
-      roughness: 0.1,
-      transmission: 0.0,
-      transparent: false,
-    },
+    title: "Standard",
+    materials: [
+      {
+        key: "flat",
+        name: "Flat",
+        props: {
+          color: new THREE.Color(0xcccccc),
+          metalness: 0.0,
+          roughness: 0.8,
+        },
+      },
+      {
+        key: "matte_black",
+        name: "Matte Black",
+        props: {
+          color: new THREE.Color(0x111111),
+          metalness: 0.0,
+          roughness: 0.9,
+        },
+      },
+      {
+        key: "ferrari",
+        name: "Ferrari",
+        props: {
+          color: new THREE.Color(0xe70000),
+          metalness: 0.8,
+          roughness: 0.4,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.1,
+        },
+      },
+    ],
   },
   {
-    key: "gold",
-    name: "Gold",
-    props: {
-      color: new THREE.Color(0xffd700),
-      metalness: 1.0,
-      roughness: 0.01,
-      transmission: 0.0,
-      transparent: false,
-    },
+    title: "Metals",
+    materials: [
+      {
+        key: "gold",
+        name: "Gold",
+        props: {
+          color: new THREE.Color(0xffd700),
+          metalness: 1.0,
+          roughness: 0.01,
+        },
+      },
+      {
+        key: "silver",
+        name: "Silver",
+        props: {
+          color: new THREE.Color(0xc0c0c0),
+          metalness: 1.0,
+          roughness: 0.05,
+        },
+      },
+      {
+        key: "mirror",
+        name: "Mirror",
+        props: {
+          color: new THREE.Color(0xffffff),
+          metalness: 1.0,
+          roughness: 0.0,
+        },
+      },
+      {
+        key: "copper",
+        name: "Copper",
+        props: {
+          color: new THREE.Color(0xb87333),
+          metalness: 1.0,
+          roughness: 0.1,
+        },
+      },
+      {
+        key: "brass",
+        name: "Brass",
+        props: {
+          color: new THREE.Color(0xb5a642),
+          metalness: 1.0,
+          roughness: 0.2,
+        },
+      },
+      {
+        key: "bronze",
+        name: "Bronze",
+        props: {
+          color: new THREE.Color(0xcd7f32),
+          metalness: 1.0,
+          roughness: 0.2,
+        },
+      },
+      {
+        key: "titanium",
+        name: "Titanium",
+        props: {
+          color: new THREE.Color(0x878681),
+          metalness: 1.0,
+          roughness: 0.3,
+        },
+      },
+      {
+        key: "platinum",
+        name: "Platinum",
+        props: {
+          color: new THREE.Color(0xe5e4e2),
+          metalness: 1.0,
+          roughness: 0.1,
+        },
+      },
+    ],
   },
   {
-    key: "copper",
-    name: "Copper",
-    props: {
-      color: new THREE.Color(0xb87333),
-      metalness: 1.0,
-      roughness: 0.4,
-      transmission: 0.0,
-      transparent: false,
-    },
+    title: "Gemstones & Translucent",
+    materials: [
+      {
+        key: "glass",
+        name: "Glass",
+        props: {
+          metalness: 0.0,
+          roughness: 0,
+          transmission: 1.0,
+          // @ts-ignore
+          ior: 1.5,
+          thickness: 0.5,
+          transparent: true,
+        },
+      },
+      {
+        key: "jade",
+        name: "Jade",
+        props: {
+          color: new THREE.Color(0x00a86b),
+          metalness: 0.1,
+          roughness: 0.2,
+          transmission: 0.9,
+          thickness: 1.0,
+          transparent: true,
+        },
+      },
+      {
+        key: "diamond",
+        name: "Diamond",
+        props: {
+          metalness: 0.0,
+          roughness: 0.01,
+          transmission: 1.0,
+          // @ts-ignore
+          ior: 2.418,
+          thickness: 0.1,
+          transparent: true,
+        },
+      },
+      {
+        key: "ruby",
+        name: "Ruby",
+        props: {
+          color: new THREE.Color(0x9b111e),
+          metalness: 0.0,
+          roughness: 0.1,
+          transmission: 1.0,
+          // @ts-ignore
+          ior: 1.77,
+          thickness: 1.2,
+          transparent: true,
+        },
+      },
+      {
+        key: "sapphire",
+        name: "Sapphire",
+        props: {
+          color: new THREE.Color(0x0f52ba),
+          metalness: 0.0,
+          roughness: 0.1,
+          transmission: 1.0,
+          // @ts-ignore
+          ior: 1.77,
+          thickness: 1.2,
+          transparent: true,
+        },
+      },
+    ],
   },
   {
-    key: "glass",
-    name: "Glass",
-    props: {
-      color: new THREE.Color(0xffffff),
-      metalness: 0.5,
-      roughness: 0.1,
-      transmission: 0.95,
-      transparent: true,
-      opacity: 0.95,
-    },
-  },
-  {
-    key: "flat",
-    name: "Flat",
-    props: {
-      color: new THREE.Color(0xcccccc),
-      metalness: 0.0,
-      roughness: 0.8,
-      transmission: 0.0,
-      transparent: false,
-    },
+    title: "Exotic",
+    materials: [
+      {
+        key: "neon_blue",
+        name: "Neon Blue",
+        props: {
+          color: new THREE.Color(0x0000ff),
+          emissive: new THREE.Color(0x0000ff),
+          emissiveIntensity: 2.0,
+        },
+      },
+      {
+        key: "lava",
+        name: "Lava",
+        props: {
+          color: new THREE.Color(0x1c0000),
+          emissive: new THREE.Color(0xff4500),
+          emissiveIntensity: 1.5,
+          roughness: 0.8,
+        },
+      },
+    ],
   },
 ];
 
@@ -85,6 +241,7 @@ interface CanvasProps {
   gentleRotation: boolean;
   hdri: string;
   material: string;
+  thickness: number;
 }
 
 const Canvas: React.FC<CanvasProps> = ({
@@ -92,6 +249,7 @@ const Canvas: React.FC<CanvasProps> = ({
   gentleRotation,
   hdri,
   material,
+  thickness,
 }) => {
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
@@ -107,9 +265,7 @@ const Canvas: React.FC<CanvasProps> = ({
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-
   const pathTubeRef = useRef<THREE.Mesh | null>(null);
-
   const directionalLightRef = useRef<THREE.DirectionalLight | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -149,7 +305,7 @@ const Canvas: React.FC<CanvasProps> = ({
     directionalLightRef.current = directionalLight;
 
     const camera = new THREE.PerspectiveCamera(
-      75,
+      30,
       currentMount.clientWidth / currentMount.clientHeight,
       0.1,
       1000
@@ -220,7 +376,7 @@ const Canvas: React.FC<CanvasProps> = ({
       pathTubeRef.current.geometry = new THREE.TubeGeometry(
         tubeCurve,
         points.length * 2,
-        0.1,
+        thickness,
         8,
         false
       );
@@ -247,7 +403,7 @@ const Canvas: React.FC<CanvasProps> = ({
         light.shadow.camera.updateProjectionMatrix();
       }
     }
-  }, [segments, gentleRotation]);
+  }, [segments, gentleRotation, thickness]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -264,7 +420,10 @@ const Canvas: React.FC<CanvasProps> = ({
     if (!pathTubeRef.current) return;
 
     const tubeMesh = pathTubeRef.current as THREE.Mesh;
-    const selectedMaterial = availableMaterials.find((m) => m.key === material);
+    const allMaterials = materialSections.flatMap(
+      (section) => section.materials
+    );
+    const selectedMaterial = allMaterials.find((m) => m.key === material);
 
     if (selectedMaterial) {
       const newMaterial = new THREE.MeshPhysicalMaterial(
@@ -322,7 +481,7 @@ const Canvas: React.FC<CanvasProps> = ({
         onClick={toggleFullscreen}
         className="absolute top-2 right-2 bg-gray-700 text-white p-2 rounded"
       >
-        {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+        {isFullscreen ? <Minimize /> : <Maximize />}
       </button>
     </div>
   );
