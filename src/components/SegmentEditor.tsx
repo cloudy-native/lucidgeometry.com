@@ -8,11 +8,10 @@ import {
   SelectItem,
   SelectSection,
   Slider,
-  Switch,
 } from "@heroui/react";
 import { Dice5, Plus, Share2 } from "lucide-react";
-import React from "react";
-import { Segment, materialSections } from "./Canvas";
+import type React from "react";
+import { materialSections, type Segment } from "./Canvas";
 
 export interface Hdri {
   key: string;
@@ -20,11 +19,11 @@ export interface Hdri {
   file: string;
 }
 
-const availableHdris: Hdri[] = [
+export const availableHdris: Hdri[] = [
   {
     key: "kloppenheim_02",
-    name: "Kloppenheim",
-    file: "hdri/kloppenheim_02_1k.hdr",
+    name: "Kloppenheim (4k)",
+    file: "hdri/kloppenheim_02_4k.hdr",
   },
   {
     key: "artist_workshop",
@@ -63,27 +62,27 @@ const availableHdris: Hdri[] = [
   },
   {
     key: "burnt_warehouse",
-    name: "Burnt Warehouse",
-    file: "hdri/burnt_warehouse_2k.hdr",
+    name: "Burnt Warehouse (4k)",
+    file: "hdri/burnt_warehouse_4k.hdr",
   },
   {
     key: "cobblestone_street_night",
-    name: "Cobblestone Street Night",
+    name: "Cobblestone Street Night (2k)",
     file: "hdri/cobblestone_street_night_2k.hdr",
   },
   {
     key: "rainforest_trail",
-    name: "Rainforest Trail",
+    name: "Rainforest Trail (2k)",
     file: "hdri/rainforest_trail_2k.hdr",
   },
   {
     key: "rogland_moonlit_night",
-    name: "Rogland Moonlit Night",
+    name: "Rogland Moonlit Night (2k)",
     file: "hdri/rogland_moonlit_night_2k.hdr",
   },
   {
     key: "rosendal_plains_2",
-    name: "Rosenal Plains 2",
+    name: "Rosenal Plains 2 (2k)",
     file: "hdri/rosendal_plains_2_2k.hdr",
   },
 ];
@@ -97,6 +96,8 @@ export interface RandomizeConfig {
   numMax: number;
   denMin: number;
   denMax: number;
+  lfoPeriodMin: number;
+  lfoPeriodMax: number;
 }
 
 interface SegmentEditorProps {
@@ -106,15 +107,19 @@ interface SegmentEditorProps {
   onRandomize: () => void;
   randomizeConfig: RandomizeConfig;
   setRandomizeConfig: React.Dispatch<React.SetStateAction<RandomizeConfig>>;
-  gentleRotation: boolean;
-  onGentleRotationChange: (rotate: boolean) => void;
+  gentleRotation: number;
+  onGentleRotationChange: (speed: number) => void;
   hdri: string;
   onHdriChange: (hdri: string) => void;
   material: string;
   onMaterialChange: (material: string) => void;
   thickness: number;
   onThicknessChange: (thickness: number) => void;
+  pathResolution: number;
+  onPathResolutionChange: (resolution: number) => void;
   onShare: () => void;
+  isAnimated: boolean;
+  onIsAnimatedChange: (isAnimated: boolean) => void;
 }
 
 const SegmentEditor: React.FC<SegmentEditorProps> = ({
@@ -132,8 +137,13 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
   onMaterialChange,
   thickness,
   onThicknessChange,
+  pathResolution: _pathResolution,
+  onPathResolutionChange: _onPathResolutionChange,
   onShare,
+  isAnimated: _isAnimated,
+  onIsAnimatedChange: _onIsAnimatedChange,
 }) => {
+  const RATIO_CAP = 64;
   return (
     <div className="p-4 space-y-4">
       <Card>
@@ -141,31 +151,38 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
           <h4 className="text-lg font-bold">Controls</h4>
         </CardHeader>
         <CardBody>
-          <div className="flex gap-2">
-            <Button
-              onClick={onRandomize}
-              title="Randomize"
-              color="primary"
-              startContent={<Dice5 />}
-            >
-              Randomize
-            </Button>
-            <Button
-              onClick={onAdd}
-              title="Add Segment"
-              color="secondary"
-              startContent={<Plus />}
-            >
-              Add
-            </Button>
-            <Button
-              onClick={onShare}
-              title="Share"
-              color="success"
-              startContent={<Share2 />}
-            >
-              Share
-            </Button>
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2">
+              <Button
+                onClick={onRandomize}
+                title="Randomize"
+                color="primary"
+                startContent={<Dice5 />}
+              >
+                Randomize
+              </Button>
+              <Button
+                onClick={onAdd}
+                title="Add Segment"
+                color="secondary"
+                startContent={<Plus />}
+              >
+                Add
+              </Button>
+              <Button
+                onClick={onShare}
+                title="Share"
+                color="success"
+                startContent={<Share2 />}
+              >
+                Share
+              </Button>
+            </div>
+            {/* <div>
+              <Checkbox isSelected={isAnimated} onValueChange={onIsAnimatedChange}>
+                Animate
+              </Checkbox>
+            </div> */}
           </div>
         </CardBody>
       </Card>
@@ -176,8 +193,9 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
         </CardHeader>
         <CardBody className="space-y-2">
           <div className="grid grid-cols-12 gap-2 px-1 text-sm font-mono text-gray-400">
-            <div className="col-span-3">Length</div>
-            <div className="col-span-6 text-center">Ratio</div>
+            <div className="col-span-2">Length</div>
+            <div className="col-span-2">LFO (s)</div>
+            <div className="col-span-5 text-center">Ratio</div>
             <div className="col-span-3">Axis</div>
           </div>
           {segments.map((segment) => (
@@ -185,27 +203,63 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
               key={segment.id}
               className="grid grid-cols-12 gap-2 items-center"
             >
-              <div className="col-span-3">
+              <div className="col-span-2">
                 <Input
                   type="number"
                   aria-label="Length"
                   size="sm"
+                  min="1"
                   value={String(segment.length)}
-                  onValueChange={(val) =>
-                    onUpdate(segment.id, { length: Number(val) })
-                  }
+                  onValueChange={(val) => {
+                    const newLength = Math.max(1, Number(val));
+                    onUpdate(segment.id, {
+                      length: newLength,
+                      originalLength: segment.lfoPeriod
+                        ? newLength
+                        : segment.originalLength,
+                    });
+                  }}
                 />
               </div>
-              <div className="col-span-3">
+              <div className="col-span-2">
+                <Input
+                  type="number"
+                  aria-label="LFO Period (seconds)"
+                  size="sm"
+                  min="0"
+                  step="0.1"
+                  value={
+                    segment.lfoPeriod ? String(segment.lfoPeriod / 1000) : "0"
+                  }
+                  onValueChange={(val) => {
+                    const periodSeconds = Number(val);
+                    onUpdate(segment.id, {
+                      lfoPeriod:
+                        periodSeconds > 0 ? periodSeconds * 1000 : undefined,
+                      originalLength:
+                        periodSeconds > 0 ? segment.length : undefined,
+                      lfoPhase:
+                        periodSeconds > 0 && segment.lfoPhase === undefined
+                          ? 0
+                          : segment.lfoPhase,
+                    });
+                  }}
+                />
+              </div>
+              <div className="col-span-2">
                 <Input
                   type="number"
                   aria-label="Numerator"
                   size="sm"
                   min="1"
+                  max={RATIO_CAP}
                   value={String(segment.speed.num)}
                   onValueChange={(val) =>
                     onUpdate(segment.id, {
-                      speed: { ...segment.speed, num: Number(val) },
+                      speed: {
+                        ...segment.speed,
+                        num: Math.min(RATIO_CAP, Math.max(1, Number(val))),
+                      },
                     })
                   }
                 />
@@ -216,10 +270,14 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
                   aria-label="Denominator"
                   size="sm"
                   min="1"
+                  max={RATIO_CAP}
                   value={String(segment.speed.den)}
                   onValueChange={(val) =>
                     onUpdate(segment.id, {
-                      speed: { ...segment.speed, den: Number(val) },
+                      speed: {
+                        ...segment.speed,
+                        den: Math.min(RATIO_CAP, Math.max(1, Number(val))),
+                      },
                     })
                   }
                 />
@@ -250,12 +308,14 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
           <h4 className="text-lg font-bold">Display Options</h4>
         </CardHeader>
         <CardBody className="space-y-4">
-          <Switch
-            isSelected={gentleRotation}
-            onValueChange={onGentleRotationChange}
-          >
-            Gentle Rotation
-          </Switch>
+          <Slider
+            label="Rotation Speed"
+            minValue={0}
+            maxValue={5}
+            step={0.1}
+            value={gentleRotation}
+            onChange={(val) => onGentleRotationChange(val as number)}
+          />
           <Slider
             label="Thickness"
             minValue={0.01}
@@ -264,6 +324,15 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
             value={thickness}
             onChange={(val) => onThicknessChange(val as number)}
           />
+          {/* <Slider
+            label="Path Resolution"
+            minValue={50}
+            maxValue={2000}
+            step={10}
+            value={pathResolution}
+            onChange={(val) => onPathResolutionChange(val as number)}
+          /> */}
+
           <Select
             label="Environment"
             selectedKeys={[hdri]}
@@ -300,81 +369,153 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
             </span>
             <span className="font-mono text-gray-400 text-center">Max</span>
 
-            <label className="text-sm">Segments</label>
+            <span className="text-sm">Segments</span>
             <Input
               type="number"
               size="sm"
               min="1"
+              aria-label="Segments min"
+              max={randomizeConfig.countMax}
               value={String(randomizeConfig.countMin)}
               onValueChange={(val) =>
-                setRandomizeConfig((c) => ({ ...c, countMin: Number(val) }))
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  countMin: Math.min(Math.max(1, Number(val)), c.countMax),
+                }))
               }
             />
             <Input
               type="number"
               size="sm"
-              min="1"
+              min={Math.max(1, randomizeConfig.countMin)}
+              aria-label="Segments max"
               value={String(randomizeConfig.countMax)}
               onValueChange={(val) =>
-                setRandomizeConfig((c) => ({ ...c, countMax: Number(val) }))
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  countMax: Math.max(Math.max(1, Number(val)), c.countMin),
+                }))
               }
             />
 
-            <label className="text-sm">Length</label>
+            <span className="text-sm">Length</span>
             <Input
               type="number"
               size="sm"
+              min="1"
+              aria-label="Length min"
+              max={randomizeConfig.lengthMax}
               value={String(randomizeConfig.lengthMin)}
               onValueChange={(val) =>
-                setRandomizeConfig((c) => ({ ...c, lengthMin: Number(val) }))
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  lengthMin: Math.max(1, Math.min(Number(val), c.lengthMax)),
+                }))
               }
             />
             <Input
               type="number"
               size="sm"
+              min={Math.max(1, randomizeConfig.lengthMin)}
+              aria-label="Length max"
               value={String(randomizeConfig.lengthMax)}
               onValueChange={(val) =>
-                setRandomizeConfig((c) => ({ ...c, lengthMax: Number(val) }))
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  lengthMax: Math.max(1, Math.max(Number(val), c.lengthMin)),
+                }))
               }
             />
 
-            <label className="text-sm">Numerator</label>
+            <span className="text-sm">Numerator</span>
             <Input
               type="number"
               size="sm"
               min="1"
+              aria-label="Numerator min"
+              max={randomizeConfig.numMax}
               value={String(randomizeConfig.numMin)}
               onValueChange={(val) =>
-                setRandomizeConfig((c) => ({ ...c, numMin: Number(val) }))
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  numMin: Math.min(Math.max(1, Number(val)), c.numMax),
+                }))
               }
             />
             <Input
               type="number"
               size="sm"
-              min="1"
+              aria-label="Numerator max"
               value={String(randomizeConfig.numMax)}
+              min={Math.max(1, randomizeConfig.numMin)}
               onValueChange={(val) =>
-                setRandomizeConfig((c) => ({ ...c, numMax: Number(val) }))
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  numMax: Math.max(Math.max(1, Number(val)), c.numMin),
+                }))
               }
             />
 
-            <label className="text-sm">Denominator</label>
+            <span className="text-sm">Denominator</span>
             <Input
               type="number"
               size="sm"
               min="1"
+              aria-label="Denominator min"
+              max={randomizeConfig.denMax}
               value={String(randomizeConfig.denMin)}
               onValueChange={(val) =>
-                setRandomizeConfig((c) => ({ ...c, denMin: Number(val) }))
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  denMin: Math.min(Math.max(1, Number(val)), c.denMax),
+                }))
               }
             />
             <Input
               type="number"
               size="sm"
-              min="1"
+              aria-label="Denominator max"
               value={String(randomizeConfig.denMax)}
+              min={Math.max(1, randomizeConfig.denMin)}
               onValueChange={(val) =>
-                setRandomizeConfig((c) => ({ ...c, denMax: Number(val) }))
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  denMax: Math.max(Math.max(1, Number(val)), c.denMin),
+                }))
+              }
+            />
+
+            <span className="text-sm">LFO Period (s)</span>
+            <Input
+              type="number"
+              size="sm"
+              min="0"
+              step="1"
+              aria-label="LFO Period min"
+              max={randomizeConfig.lfoPeriodMax}
+              value={String(randomizeConfig.lfoPeriodMin)}
+              onValueChange={(val) =>
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  lfoPeriodMin: Math.min(
+                    Math.max(0, Number(val)),
+                    c.lfoPeriodMax,
+                  ),
+                }))
+              }
+            />
+            <Input
+              type="number"
+              size="sm"
+              min={randomizeConfig.lfoPeriodMin}
+              step="1"
+              aria-label="LFO Period max"
+              value={String(randomizeConfig.lfoPeriodMax)}
+              onValueChange={(val) =>
+                setRandomizeConfig((c) => ({
+                  ...c,
+                  lfoPeriodMax: Math.max(Number(val), c.lfoPeriodMin),
+                }))
               }
             />
           </div>

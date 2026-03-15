@@ -53,23 +53,80 @@ In the Spirograph analogy, this is like having multiple wheels all centered at t
 
 ## The Math Behind the Magic
 
-The process is calculated for thousands of small time steps ($t$) to generate a smooth curve. For any given time $t$, the position of the final point is determined by the following:
+The algorithm generates a smooth curve by calculating the position of a point for thousands of discrete time steps. Each step builds the final position by summing rotating vectors, creating the intricate patterns you see.
 
-**1. Angular Speed** For each segment $i$, the speed of rotation is the ratio you provide:
+### Step 1: Simplify Speed Ratios
+
+For each segment $i$, the rotation speed is defined by the ratio you provide:
 
 $$s_i = \frac{numerator_i}{denominator_i}$$
 
-**2. Angle of Rotation** The angle of rotation ($\theta_i$) at time $t$ is the speed multiplied by time:
+Before calculation, each ratio is reduced to its simplest form using the greatest common divisor (GCD). This ensures the denominators are as small as possible, which directly affects how many cycles the shape needs to complete.
+
+### Step 2: Calculate the Period
+
+To create a closed loop, all segments must return to their starting positions simultaneously. This requires finding when all rotations complete whole cycles together.
+
+The algorithm computes the least common multiple (LCM) of all simplified denominators. The total time to trace one complete shape is:
+
+$$T_{total} = 2\pi \cdot LCM$$
+
+This ensures every segment completes an integer number of rotations, guaranteeing the path closes seamlessly.
+
+### Step 3: Complexity Caps
+
+To keep computation tractable, the algorithm enforces two hard limits:
+
+- **Maximum LCM**: Capped at 512 cycles
+- **Maximum Points**: Capped at 20,000 points
+
+If your segment ratios would produce a larger LCM or more points, the algorithm automatically clamps to these limits. You'll see a warning in the browser console when this happens. The shape will still render, but it may not form a perfectly closed loop.
+
+### Step 4: Determine Point Density
+
+The **Path Resolution** parameter controls how many points are calculated per unit of time. Higher resolution produces smoother curves but requires more computation.
+
+The number of points generated is:
+
+$$N_{points} = \min\left(\left\lfloor T_{total} \cdot resolution \right\rfloor, 5000\right)$$
+
+The time step between consecutive points is then:
+
+$$\Delta t = \frac{T_{total}}{N_{points}}$$
+
+### Step 5: Generate Each Point
+
+For each time value $t$ from $0$ to $T_{total}$ (incrementing by $\Delta t$), the algorithm calculates the position $\vec{P}(t)$ by summing the contribution of every segment.
+
+For each segment $i$:
+
+**a) Calculate the rotation angle:**
 
 $$\theta_i(t) = t \cdot s_i$$
 
-**3. The Rotating Vector** For each segment, we start with a base vector, $\vec{v}_{base, i}$, which has a magnitude equal to the segment's _length_ and is oriented perpendicular to its _axis_ of rotation. The vector's position at time $t$, $\vec{v}_i(t)$, is found by rotating this base vector by $\theta_i(t)$. This rotation is handled using **Quaternions**, a mathematically robust way to represent 3D rotations that avoids issues like gimbal lock.
+**b) Define the base arm vector:**
 
-**4. The Final Position** The final position of the point on the curve, $\vec{P}(t)$, is the vector sum of all the individual rotating vectors:
+Each segment starts with a vector perpendicular to its rotation axis, with magnitude equal to the segment's length:
 
-$$\vec{P}(t) = \sum_{i=1}^{n} \vec{v}_i(t) = \vec{v}_1(t) + \vec{v}_2(t) + \ldots + \vec{v}_n(t)$$
+- If rotating around $X$: $\vec{v}_{base,i} = (0, length_i, 0)$
+- If rotating around $Y$: $\vec{v}_{base,i} = (0, 0, length_i)$
+- If rotating around $Z$: $\vec{v}_{base,i} = (length_i, 0, 0)$
 
-**5. Creating a Closed Loop** To ensure the shape connects back to its starting point, we must find a _total time_ where all rotations complete a full cycle simultaneously. This is achieved by calculating the Least Common Multiple (LCM) of the denominators of all speed ratios. The _total time_ is then $2 \cdot \pi \cdot LCM$, which guarantees a seamless, closed loop.
+**c) Rotate the arm vector:**
+
+The base vector is rotated by angle $\theta_i(t)$ around its designated axis using a quaternion:
+
+$$\vec{v}_i(t) = Q(\hat{a}_i, \theta_i(t)) \cdot \vec{v}_{base,i}$$
+
+where $Q(\hat{a}_i, \theta_i)$ is the quaternion representing rotation by angle $\theta_i$ around axis $\hat{a}_i$.
+
+**d) Sum all vectors:**
+
+The final position at time $t$ is the vector sum of all rotated segment vectors:
+
+$$\vec{P}(t) = \sum_{i=1}^{n} \vec{v}_i(t)$$
+
+This point is added to the path, and the process repeats for the next time step.
 
 ### A Note on Quaternions vs. Matrices
 

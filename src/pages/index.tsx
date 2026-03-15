@@ -1,18 +1,132 @@
-import Canvas, { Segment } from "@/components/Canvas";
-import SegmentEditor from "@/components/SegmentEditor";
-import DefaultLayout from "@/layouts/default";
 import { addToast } from "@heroui/toast";
 import { Dice5, Share2 } from "lucide-react";
 import { useState } from "react";
+import Canvas, { type Segment } from "@/components/Canvas";
+import SegmentEditor, { availableHdris } from "@/components/SegmentEditor";
+import DefaultLayout from "@/layouts/default";
+
+const ensureNonZero = (v: number) => (v === 0 ? 1 : v);
+const ensureNonZeroSpeed = (s: { num: number; den: number }) => ({
+  num: ensureNonZero(s.num),
+  den: ensureNonZero(s.den),
+});
+
+const defaultRandomizeConfig = {
+  countMin: 3,
+  countMax: 4,
+  lengthMin: 1,
+  lengthMax: 10,
+  numMin: 1,
+  numMax: 5,
+  denMin: 1,
+  denMax: 5,
+  lfoPeriodMin: 300,
+  lfoPeriodMax: 500,
+};
+
+const generateRandomSegments = (config: typeof defaultRandomizeConfig): Segment[] => {
+  const {
+    countMin,
+    countMax,
+    lengthMin,
+    lengthMax,
+    numMin,
+    numMax,
+    denMin,
+    denMax,
+    lfoPeriodMin,
+    lfoPeriodMax,
+  } = config;
+
+  const getRandomInt = (min: number, max: number): number => {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    const value = Math.floor(Math.random() * (max - min + 1)) + min;
+    return value === 0 ? getRandomInt(min, max) : value;
+  };
+
+  const shuffle = <T,>(array: T[]): T[] => {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  };
+
+  const count = Math.floor(Math.random() * (countMax - countMin + 1)) + countMin;
+  let assignedAxes: ("x" | "y" | "z")[] = [];
+  const allAxes: ("x" | "y" | "z")[] = ["x", "y", "z"];
+
+  if (count <= 0) {
+    return [];
+  } else if (count === 1) {
+    assignedAxes = [allAxes[Math.floor(Math.random() * 3)]];
+  } else if (count === 2) {
+    assignedAxes = shuffle([...allAxes]).slice(0, 2);
+  } else {
+    assignedAxes = [...allAxes];
+    for (let i = 3; i < count; i++) {
+      assignedAxes.push(allAxes[Math.floor(Math.random() * 3)]);
+    }
+    assignedAxes = shuffle(assignedAxes);
+  }
+
+  const usedRatios = new Set<string>();
+  
+  const generateUniqueRatio = (maxAttempts = 50): { num: number; den: number } => {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const num = getRandomInt(numMin, numMax);
+      let den = getRandomInt(denMin, denMax);
+
+      // Avoid num === den
+      while (num === den) {
+        den = getRandomInt(denMin, denMax);
+      }
+
+      // Normalize the ratio to check for duplicates
+      const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+      const divisor = gcd(Math.abs(num), Math.abs(den));
+      const normalizedNum = num / divisor;
+      const normalizedDen = den / divisor;
+      const ratioKey = `${normalizedNum}/${normalizedDen}`;
+
+      if (!usedRatios.has(ratioKey)) {
+        usedRatios.add(ratioKey);
+        return { num, den };
+      }
+    }
+    
+    // If we can't find a unique ratio after max attempts, just return a random one
+    const num = getRandomInt(numMin, numMax);
+    let den = getRandomInt(denMin, denMax);
+    while (num === den) {
+      den = getRandomInt(denMin, denMax);
+    }
+    return { num, den };
+  };
+
+  return Array.from({ length: count }, (_, i) => {
+    const speed = generateUniqueRatio();
+    const length = getRandomInt(lengthMin, lengthMax);
+    const lfoPeriod = (Math.floor(Math.random() * (lfoPeriodMax - lfoPeriodMin + 1)) + lfoPeriodMin) * 1000;
+    const lfoPhase = Math.random() * 2 * Math.PI;
+
+    return {
+      id: i.toString(),
+      length,
+      speed,
+      axis: assignedAxes[i],
+      lfoPeriod,
+      lfoPhase,
+      originalLength: length,
+    };
+  });
+};
 
 const getInitialState = () => {
   const defaultState = {
-    segments: [
-      { id: "1", length: -1, speed: { num: 4, den: 3 }, axis: "x" },
-      { id: "2", length: -3, speed: { num: 2, den: 1 }, axis: "y" },
-      { id: "3", length: 3, speed: { num: 1, den: 4 }, axis: "z" },
-    ],
-    hdri: "hdri/kloppenheim_02_1k.hdr",
+    segments: generateRandomSegments(defaultRandomizeConfig),
+    hdri: availableHdris[0].file,
     material: "gold",
     thickness: 0.1,
   };
@@ -40,7 +154,10 @@ const getInitialState = () => {
         }
 
         return {
-          segments: decoded.segments,
+          segments: decoded.segments.map((s: Segment) => ({
+            ...s,
+            speed: ensureNonZeroSpeed(s.speed),
+          })),
           hdri: decoded.hdri,
           material: decoded.material,
           thickness: decoded.thickness ?? 0.1, // Fallback for old links
@@ -57,20 +174,13 @@ const getInitialState = () => {
 export default function IndexPage() {
   const [initialState] = useState(getInitialState);
   const [segments, setSegments] = useState<Segment[]>(initialState.segments);
-  const [gentleRotation, setGentleRotation] = useState(true);
+  const [gentleRotation, setGentleRotation] = useState(0.5);
   const [hdri, setHdri] = useState(initialState.hdri);
   const [material, setMaterial] = useState(initialState.material);
   const [thickness, setThickness] = useState(initialState.thickness);
-  const [randomizeConfig, setRandomizeConfig] = useState({
-    countMin: 3,
-    countMax: 4,
-    lengthMin: -5,
-    lengthMax: 5,
-    numMin: 1,
-    numMax: 5,
-    denMin: 1,
-    denMax: 5,
-  });
+  const [isAnimated, setIsAnimated] = useState(false);
+  const [pathResolution, setPathResolution] = useState(500);
+  const [randomizeConfig, setRandomizeConfig] = useState(defaultRandomizeConfig);
 
   const handleShare = () => {
     const stateToShare = {
@@ -107,92 +217,26 @@ export default function IndexPage() {
     newValues: Partial<Omit<Segment, "id">>
   ) => {
     setSegments((prevSegments) =>
-      prevSegments.map((s) => (s.id === id ? { ...s, ...newValues } : s))
+      prevSegments.map((s) => {
+        if (s.id !== id) return s;
+        const merged = { ...s, ...newValues } as Segment;
+        if (newValues.speed) {
+          merged.speed = ensureNonZeroSpeed(merged.speed);
+        }
+        return merged;
+      })
     );
   };
 
-  const getRandomInt = (min: number, max: number): number => {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    const value = Math.floor(Math.random() * (max - min + 1)) + min;
-    console.log("random int", value);
-
-    return value === 0 ? getRandomInt(min, max) : value;
-  };
-
   const randomizeSegments = () => {
-    const {
-      countMin,
-      countMax,
-      lengthMin,
-      lengthMax,
-      numMin,
-      numMax,
-      denMin,
-      denMax,
-    } = randomizeConfig;
-    const count =
-      Math.floor(Math.random() * (countMax - countMin + 1)) + countMin;
-
-    // Helper to shuffle an array, with TSX-compatible generic syntax
-    const shuffle = <T,>(array: T[]): T[] => {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-      return array;
-    };
-
-    let assignedAxes: ("x" | "y" | "z")[] = [];
-    const allAxes: ("x" | "y" | "z")[] = ["x", "y", "z"];
-
-    if (count <= 0) {
-      // No segments to generate
-    } else if (count === 1) {
-      assignedAxes = [allAxes[Math.floor(Math.random() * 3)]];
-    } else if (count === 2) {
-      assignedAxes = shuffle([...allAxes]).slice(0, 2);
-    } else {
-      // count >= 3
-      assignedAxes = [...allAxes]; // Start with one of each
-      for (let i = 3; i < count; i++) {
-        assignedAxes.push(allAxes[Math.floor(Math.random() * 3)]);
-      }
-      assignedAxes = shuffle(assignedAxes); // Shuffle the final list
-    }
-
-    const newSegments = Array.from({ length: count }, (_, i) => {
-      let num = getRandomInt(numMin, numMax);
-      let den = getRandomInt(denMin, denMax);
-
-      while (num === den) {
-        den = getRandomInt(denMin, denMax);
-      }
-
-      return {
-        id: i.toString(),
-        length: getRandomInt(lengthMin, lengthMax),
-        speed: { num, den },
-        axis: assignedAxes[i],
-      };
-    });
-
-    setSegments(newSegments);
+    setSegments(generateRandomSegments(randomizeConfig));
   };
 
   const addSegment = () => {
-    const { lengthMin, lengthMax, numMin, numMax, denMin, denMax } =
-      randomizeConfig;
-    const newSegment: Segment = {
-      id: Date.now().toString(),
-      length: getRandomInt(lengthMin, lengthMax),
-      speed: {
-        num: getRandomInt(numMin, numMax),
-        den: getRandomInt(denMin, denMax),
-      },
-      axis: (["x", "y", "z"] as const)[Math.floor(Math.random() * 3)],
-    };
-    setSegments((prevSegments) => [...prevSegments, newSegment]);
+    const tempConfig = { ...randomizeConfig, countMin: 1, countMax: 1 };
+    const [newSegment] = generateRandomSegments(tempConfig);
+    const segmentWithId = { ...newSegment, id: Date.now().toString() };
+    setSegments((prevSegments) => [...prevSegments, segmentWithId]);
   };
 
   return (
@@ -245,7 +289,11 @@ export default function IndexPage() {
               onMaterialChange={setMaterial}
               thickness={thickness}
               onThicknessChange={setThickness}
+              pathResolution={pathResolution}
+              onPathResolutionChange={setPathResolution}
               onShare={handleShare}
+              isAnimated={isAnimated}
+              onIsAnimatedChange={setIsAnimated}
             />
           </div>
           <div className="flex-grow relative rounded-lg overflow-hidden">
@@ -255,6 +303,8 @@ export default function IndexPage() {
               hdri={hdri}
               material={material}
               thickness={thickness}
+              isAnimated={isAnimated}
+              pathResolution={pathResolution}
             />
           </div>
         </div>
