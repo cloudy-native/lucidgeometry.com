@@ -33,9 +33,21 @@ Lucid Geometry is a modern, three-dimensional evolution of that idea. Instead of
 
 Each row represents a single drawing operation. You can add as many segments as you like. The operations are performed in order from top to bottom.
 
-- **Length**: The distance to move after rotating. Can be positive or negative.
-- **Ratio**: The speed of rotation for this segment, expressed as a fraction (numerator/denominator).
+- **Length**: The radius of this segment's circular sweep. Can be positive or negative.
+- **Ratio**: The speed of rotation for this segment, expressed as a fraction (numerator/denominator). A **negative numerator** reverses the direction of rotation — this is the key to unlocking a whole family of curves.
 - **Axis**: The axis ($X$, $Y$, or $Z$) around which to rotate.
+
+### Outside vs. Inside Curves
+
+This is directly inspired by how a physical Spirograph works.
+
+**Outside curve (Epicycloid)**: When the numerator is **positive**, the arm rotates in the same direction as the base rotation. This is equivalent to rolling a small circle *around the outside* of a larger one — the classic Spirograph motion. The result tends to be looping, outward-reaching shapes.
+
+**Inside curve (Hypocycloid)**: When the numerator is **negative**, the arm rotates in the *opposite* direction. This is equivalent to rolling a circle *inside* a larger one. The result tends to be inward-folding, star-like shapes.
+
+**Flower / Rose patterns**: When an inside arm's **length is more than half the length of the outer arm**, the geometry produces petal-like flower shapes. The number of petals is determined by the speed ratio. For example, an outer arm of length `5` with speed `1` combined with an inner arm of length `4` with speed `-6` produces a 6-petal rose.
+
+In Lucid Geometry, you can freely mix outside and inside segments across different axes, creating 3D forms that have no equivalent in the flat world of the original Spirograph.
 
 ---
 
@@ -50,6 +62,20 @@ Imagine a set of arms, all originating from the center of our 3D world. Each arm
 The final path is traced by the point that results from adding all the individual arm vectors together, tip to tail. Because the final position is a simple sum, the order of the segments does not matter, making the system flexible and interchangeable.
 
 In the Spirograph analogy, this is like having multiple wheels all centered at the same point, each with its own arm, with the final drawing point being the sum of where each arm is pointing. In Spirograph, the wheels are the segments, the arms are the vectors, and the drawing point is the final position. Lucid Geometry extends this idea into three dimensions and allows for more complex shapes.
+
+## Epicycloids and Hypocycloids
+
+The two fundamental families of curves in classical Spirograph have precise mathematical names — and both are fully expressible here.
+
+An [**epicycloid**](https://en.wikipedia.org/wiki/Epicycloid) is traced when a circle rolls around the *outside* of a fixed circle. In Lucid Geometry, this corresponds to a segment with a **positive** speed ratio: the arm rotates forward, adding to the sweep of the base motion.
+
+A [**hypocycloid**](https://en.wikipedia.org/wiki/Hypocycloid) is traced when a circle rolls around the *inside* of a fixed circle. This corresponds to a segment with a **negative** speed ratio: the arm rotates backward, pulling inward. Well-known special cases include the [**astroid**](https://en.wikipedia.org/wiki/Astroid) (ratio $-1/3$) and the [**deltoid**](https://en.wikipedia.org/wiki/Deltoid_curve) (ratio $-1/2$).
+
+When the inner circle's radius is more than half the outer circle's radius, the curve folds back on itself and produces **rose** or **flower** patterns. The number of petals $k$ is determined by the ratio of the two speeds:
+
+$$k = |s_{outer} - s_{inner}|$$
+
+In Lucid Geometry, these families extend into three dimensions. By assigning inside and outside segments to different axes, you can create forms that are impossible on a flat sheet of paper — helical roses, spiralling stars, and tangled knots that only exist in 3D space.
 
 ## The Math Behind the Magic
 

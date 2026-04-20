@@ -4,6 +4,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { EXRLoader } from "three/examples/jsm/loaders/EXRLoader.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 interface ExtendedMaterialProps extends THREE.MeshPhysicalMaterialParameters {
@@ -509,11 +510,17 @@ const Canvas: React.FC<CanvasProps> = ({
     const scene = sceneRef.current;
     if (!scene) return;
 
-    new RGBELoader().setPath("/").load(hdri, (texture) => {
+    const onLoad = (texture: THREE.DataTexture) => {
       texture.mapping = THREE.EquirectangularReflectionMapping;
       scene.background = texture;
       scene.environment = texture;
-    });
+    };
+    const onError = (err: unknown) => console.error(`Failed to load "${hdri}":`, err);
+    if (hdri.endsWith(".exr")) {
+      new EXRLoader().setPath("/").load(hdri, onLoad, undefined, onError);
+    } else {
+      new RGBELoader().setPath("/").load(hdri, onLoad, undefined, onError);
+    }
   }, [hdri]);
 
   useEffect(() => {

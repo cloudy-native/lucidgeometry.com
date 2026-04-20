@@ -14,76 +14,185 @@ import type React from "react";
 import { materialSections, type Segment } from "./Canvas";
 
 export interface Hdri {
+  group: string;
   key: string;
   name: string;
   file: string;
 }
 
+// The files names MUST be all lower case and without spaces
+// The key is used in the URL and should be unique
+// The file path is relative to the public directory
+// The group name can be anything you like
+//
 export const availableHdris: Hdri[] = [
   {
+    group: "Space",
+    key: "nebula_1",
+    name: "Nebula 1 (4k)",
+    file: "hdri/nebula-hdri_4K_742ed0df-a9d3-4878-9a4c-42f915e9c08a.hdr",
+  },
+  {
+    group: "Space",
+    key: "deep_space_nebula",
+    name: "Deep Space Nebula (4k)",
+    file: "hdri/deep-space-nebula_4K_7b4870ed-9185-4c3c-884c-6fe8b5159085.hdr",
+  },
+  {
+    group: "Space",
+    key: "pride_nebula",
+    name: "Pride Nebula (4k)",
+    file: "hdri/pride-nebula-8k_4K_7d9bb580-91d2-406e-a772-2a82367d0fcb.hdr",
+  },
+  {
+    group: "Space",
+    key: "earth",
+    name: "Earth (4k)",
+    file: "hdri/earth_4K_86104e26-ce9b-4bf8-930a-85fe3ebb1778.hdr",
+  },
+  {
+    group: "Space",
+    key: "rendercrate-orbital-35",
+    name: "Orbital 35 (4k)",
+    file: "hdri/rendercrate_orbital_35_4k.hdr",
+  },
+  {
+    group: "Nature",
+    key: "evening",
+    name: "Evening (4k)",
+    file: "hdri/evening_4K_8e4d6c2d-2e94-4a3d-8531-50fdb1db77a0.hdr",
+  },
+  {
+    group: "Nature",
+    key: "bluesky",
+    name: "Blue Sky (4k)",
+    file: "hdri/bluesky_4K_9e437ace-34b0-4921-85ee-bf13feea7a21.hdr",
+  },
+  {
+    group: "Nature",
+    key: "sunset_1",
+    name: "Sunset 1 (4k)",
+    file: "hdri/sunset_4K_3ff98cd2-949f-4b52-806b-d42ac68636fe.hdr",
+  },
+  {
+    group: "Nature",
+    key: "sunset_2",
+    name: "Sunset 2 (4k)",
+    file: "hdri/sunset_4K_9cd262d9-8696-41f0-b48c-dc93a1f41df7.hdr",
+  },
+  {
+    group: "Nature",
     key: "kloppenheim_02",
     name: "Kloppenheim (4k)",
     file: "hdri/kloppenheim_02_4k.hdr",
   },
   {
-    key: "artist_workshop",
-    name: "Artist Workshop",
-    file: "hdri/artist_workshop_1k.hdr",
+    group: "Nature",
+    key: "bambanani_sunset",
+    name: "Bambanani Sunset (4k)",
+    file: "hdri/bambanani_sunset_4k.hdr",
   },
   {
-    key: "moonless_golf",
-    name: "Moonless Golf",
-    file: "hdri/moonless_golf_1k.hdr",
+    group: "Nature",
+    key: "cedar_bridge_sunset",
+    name: "Cedar Bridge Sunset (4k)",
+    file: "hdri/cedar_bridge_sunset_1_4k.hdr",
   },
   {
+    group: "Nature",
+    key: "chinese_garden",
+    name: "Chinese Garden (4k)",
+    file: "hdri/chinese_garden_4k.hdr",
+  },
+  {
+    group: "Nature",
     key: "citrus_orchard_road_puresky",
-    name: "Huge Sky",
+    name: "Huge Sky (1k)",
     file: "hdri/citrus_orchard_road_puresky_1k.hdr",
   },
   {
-    key: "chinese_garden",
-    name: "Chinese Garden",
-    file: "hdri/chinese_garden_1k.hdr",
+    group: "Nature",
+    key: "moonless_golf",
+    name: "Moonless Golf (4k)",
+    file: "hdri/moonless_golf_4k.hdr",
   },
   {
-    key: "modern_buildings",
-    name: "Modern Buildings",
-    file: "hdri/modern_buildings_1k.hdr",
-  },
-  {
-    key: "brown_photostudio_02",
-    name: "Photo Studio",
-    file: "hdri/brown_photostudio_02_1k.hdr",
-  },
-  {
-    key: "cayley_interior",
-    name: "Cayley Interior",
-    file: "hdri/cayley_interior_1k.hdr",
-  },
-  {
-    key: "burnt_warehouse",
-    name: "Burnt Warehouse (4k)",
-    file: "hdri/burnt_warehouse_4k.hdr",
-  },
-  {
-    key: "cobblestone_street_night",
-    name: "Cobblestone Street Night (2k)",
-    file: "hdri/cobblestone_street_night_2k.hdr",
-  },
-  {
+    group: "Nature",
     key: "rainforest_trail",
-    name: "Rainforest Trail (2k)",
-    file: "hdri/rainforest_trail_2k.hdr",
+    name: "Rainforest Trail (4k)",
+    file: "hdri/rainforest_trail_4k.hdr",
   },
   {
+    group: "Nature",
+    key: "plains_sunset",
+    name: "Plains Sunset (4k)",
+    file: "hdri/plains_sunset_4k.hdr",
+  },
+  {
+    group: "Nature",
+    key: "qwantani_moonrise_puresky",
+    name: "Qwantani Moonrise (4k)",
+    file: "hdri/qwantani_moonrise_puresky_4k.hdr",
+  },
+  {
+    group: "Nature",
+    key: "rogland_clear_night",
+    name: "Rogland Clear Night (4k)",
+    file: "hdri/rogland_clear_night_4k.hdr",
+  },
+  {
+    group: "Nature",
     key: "rogland_moonlit_night",
     name: "Rogland Moonlit Night (2k)",
     file: "hdri/rogland_moonlit_night_2k.hdr",
   },
   {
+    group: "Nature",
     key: "rosendal_plains_2",
-    name: "Rosenal Plains 2 (2k)",
+    name: "Rosendal Plains 2 (2k)",
     file: "hdri/rosendal_plains_2_2k.hdr",
+  },
+  {
+    group: "Nature",
+    key: "sunflowers_puresky",
+    name: "Sunflowers Sky (4k)",
+    file: "hdri/sunflowers_puresky_4k.hdr",
+  },
+  {
+    group: "Studio",
+    key: "artist_workshop",
+    name: "Artist Workshop (4k)",
+    file: "hdri/artist_workshop_4k.hdr",
+  },
+  {
+    group: "Studio",
+    key: "brown_photostudio_02",
+    name: "Photo Studio (4k)",
+    file: "hdri/brown_photostudio_02_4k.hdr",
+  },
+  {
+    group: "Urban",
+    key: "burnt_warehouse",
+    name: "Burnt Warehouse (4k)",
+    file: "hdri/burnt_warehouse_4k.hdr",
+  },
+  {
+    group: "Urban",
+    key: "cobblestone_street_night",
+    name: "Cobblestone Street Night (4k)",
+    file: "hdri/cobblestone_street_night_4k.hdr",
+  },
+  {
+    group: "Urban",
+    key: "modern_buildings",
+    name: "Modern Buildings (1k)",
+    file: "hdri/modern_buildings_1k.hdr",
+  },
+  {
+    group: "Interior",
+    key: "cayley_interior",
+    name: "Cayley Interior (4k)",
+    file: "hdri/cayley_interior_4k.hdr",
   },
 ];
 
@@ -208,10 +317,10 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
                   type="number"
                   aria-label="Length"
                   size="sm"
-                  min="1"
                   value={String(segment.length)}
                   onValueChange={(val) => {
-                    const newLength = Math.max(1, Number(val));
+                    const parsed = Number(val);
+                    const newLength = parsed === 0 ? 1 : parsed;
                     onUpdate(segment.id, {
                       length: newLength,
                       originalLength: segment.lfoPeriod
@@ -251,17 +360,18 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
                   type="number"
                   aria-label="Numerator"
                   size="sm"
-                  min="1"
+                  min={-RATIO_CAP}
                   max={RATIO_CAP}
-                  value={String(segment.speed.num)}
-                  onValueChange={(val) =>
-                    onUpdate(segment.id, {
-                      speed: {
-                        ...segment.speed,
-                        num: Math.min(RATIO_CAP, Math.max(1, Number(val))),
-                      },
-                    })
-                  }
+                  defaultValue={String(segment.speed.num)}
+                  key={segment.id + "-num-" + segment.speed.num}
+                  onBlur={(e) => {
+                    const n = Number(e.target.value);
+                    if (!n) { e.target.value = String(segment.speed.num); return; }
+                    const clamped = Math.sign(n) * Math.min(RATIO_CAP, Math.max(1, Math.abs(n)));
+                    e.target.value = String(clamped);
+                    onUpdate(segment.id, { speed: { ...segment.speed, num: clamped } });
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                 />
               </div>
               <div className="col-span-3">
@@ -338,8 +448,18 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
             selectedKeys={[hdri]}
             onChange={(e) => onHdriChange(e.target.value)}
           >
-            {availableHdris.map((hdri) => (
-              <SelectItem key={hdri.file}>{hdri.name}</SelectItem>
+            {Object.entries(
+              availableHdris.reduce<Record<string, Hdri[]>>((acc, h) => {
+                if (!acc[h.group]) acc[h.group] = [];
+                acc[h.group].push(h);
+                return acc;
+              }, {})
+            ).map(([group, items]) => (
+              <SelectSection key={group} title={group} showDivider>
+                {items.map((h) => (
+                  <SelectItem key={h.file}>{h.name}</SelectItem>
+                ))}
+              </SelectSection>
             ))}
           </Select>
           <Select
@@ -431,29 +551,28 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
             <Input
               type="number"
               size="sm"
-              min="1"
               aria-label="Numerator min"
-              max={randomizeConfig.numMax}
-              value={String(randomizeConfig.numMin)}
-              onValueChange={(val) =>
-                setRandomizeConfig((c) => ({
-                  ...c,
-                  numMin: Math.min(Math.max(1, Number(val)), c.numMax),
-                }))
-              }
+              defaultValue={String(randomizeConfig.numMin)}
+              key={"numMin-" + randomizeConfig.numMin}
+              onBlur={(e) => {
+                const n = Number(e.target.value);
+                if (!n) { e.target.value = String(randomizeConfig.numMin); return; }
+                setRandomizeConfig((c) => ({ ...c, numMin: Math.min(n, c.numMax) }));
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             />
             <Input
               type="number"
               size="sm"
               aria-label="Numerator max"
-              value={String(randomizeConfig.numMax)}
-              min={Math.max(1, randomizeConfig.numMin)}
-              onValueChange={(val) =>
-                setRandomizeConfig((c) => ({
-                  ...c,
-                  numMax: Math.max(Math.max(1, Number(val)), c.numMin),
-                }))
-              }
+              defaultValue={String(randomizeConfig.numMax)}
+              key={"numMax-" + randomizeConfig.numMax}
+              onBlur={(e) => {
+                const n = Number(e.target.value);
+                if (!n) { e.target.value = String(randomizeConfig.numMax); return; }
+                setRandomizeConfig((c) => ({ ...c, numMax: Math.max(n, c.numMin) }));
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             />
 
             <span className="text-sm">Denominator</span>

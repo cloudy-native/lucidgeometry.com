@@ -13,15 +13,15 @@ const ensureNonZeroSpeed = (s: { num: number; den: number }) => ({
 
 const defaultRandomizeConfig = {
   countMin: 3,
-  countMax: 4,
+  countMax: 3,
   lengthMin: 1,
   lengthMax: 10,
-  numMin: 1,
-  numMax: 5,
+  numMin: -7,
+  numMax: 7,
   denMin: 1,
-  denMax: 5,
-  lfoPeriodMin: 300,
-  lfoPeriodMax: 500,
+  denMax: 7,
+  lfoPeriodMin: 30,
+  lfoPeriodMax: 50,
 };
 
 const generateRandomSegments = (config: typeof defaultRandomizeConfig): Segment[] => {
