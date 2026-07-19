@@ -1,3 +1,8 @@
+---
+layout: ../layouts/MarkdownLayout.astro
+title: About
+---
+
 # About
 
 I have always been fascinated by graphics. As a young boy, I went to sleep with [*Mathematical Models*](https://en.wikipedia.org/wiki/Mathematical_Models_(Cundy_and_Rollett)) by Cundy and Rollett under my pillow — a book of exquisitely strange physical forms, nets, and solids that felt like a secret language the universe was speaking just to me.

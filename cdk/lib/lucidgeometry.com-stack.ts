@@ -13,9 +13,7 @@ import { S3StaticWebsiteOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
 import { CloudFrontTarget } from "aws-cdk-lib/aws-route53-targets";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
-import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Construct } from "constructs";
-import * as path from "path";
 
 export interface LucidGeometryStackProps extends StackProps {
   domainName: string;
@@ -86,12 +84,8 @@ export class LucidGeometryStack extends Stack {
       zone: zone,
     });
 
-    new BucketDeployment(this, "DeployWebsite", {
-      sources: [Source.asset(path.join(__dirname, "../../dist"))],
-      destinationBucket: bucket,
-      distribution,
-      distributionPaths: ["/*"],
-    });
+    // Site files are deployed via root package scripts (build + aws s3 sync),
+    // not BucketDeployment — dist/ is too large for the custom-resource Lambda.
 
     new CfnOutput(this, "BucketName", {
       value: bucket.bucketName,
@@ -99,6 +93,10 @@ export class LucidGeometryStack extends Stack {
 
     new CfnOutput(this, "WebsiteUrl", {
       value: bucket.bucketWebsiteUrl,
+    });
+
+    new CfnOutput(this, "DistributionId", {
+      value: distribution.distributionId,
     });
 
     new CfnOutput(this, "DistributionDomainName", {

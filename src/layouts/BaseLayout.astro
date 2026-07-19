@@ -1,0 +1,82 @@
+---
+import "@/styles/globals.css";
+import Navbar from "@/components/Navbar.astro";
+import { siteConfig } from "@/config/site";
+
+interface Props {
+  title?: string;
+  description?: string;
+  fullHeight?: boolean;
+}
+
+const {
+  title = siteConfig.name,
+  description = siteConfig.description,
+  fullHeight = false,
+} = Astro.props;
+
+const pageTitle = title === siteConfig.name ? title : `${title} | ${siteConfig.name}`;
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="viewport-fit=cover, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var theme = stored === "light" || stored === "dark" ? stored : "dark";
+          document.documentElement.classList.toggle("dark", theme === "dark");
+        } catch (_) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div class:list={["relative flex flex-col", fullHeight ? "h-screen" : "min-h-screen"]}>
+      <Navbar />
+      <main class:list={["container mx-auto max-w-7xl flex-grow px-6 pt-16", fullHeight && "min-h-0"]}>
+        <slot />
+      </main>
+      <footer class="w-full border-t border-zinc-200 py-6 dark:border-zinc-800">
+        <div class="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 text-sm text-zinc-600 dark:text-zinc-400 sm:flex-row sm:justify-between">
+          <p class="text-center sm:text-left">
+            © {new Date().getFullYear()} Lucid Geometry
+          </p>
+          <nav class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2" aria-label="Footer">
+            <a href="/docs" class="hover:text-blue-500 hover:underline">Docs</a>
+            <a href="/about" class="hover:text-blue-500 hover:underline">About</a>
+            <a
+              href={siteConfig.links.portfolio}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-blue-500 hover:underline"
+            >
+              Portfolio
+            </a>
+            <a
+              href={siteConfig.links.contact}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-blue-500 hover:underline"
+            >
+              Contact
+            </a>
+          </nav>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

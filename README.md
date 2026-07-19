@@ -4,18 +4,15 @@ Lucid Geometry is a digital canvas for exploring the surprising beauty that emer
 
 ## Technologies Used
 
-- [React](https://react.dev/)
-- [Three.js](https://threejs.org/) & [React Three Fiber](https://docs.pmnd.rs/react-three-fiber/getting-started/introduction)
-- [Vite](https://vitejs.dev/)
+- [Astro](https://astro.build/)
+- [React](https://react.dev/) (interactive islands: 3D canvas & controls)
+- [Three.js](https://threejs.org/)
 - [TypeScript](https://www.typescriptlang.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
-- [HeroUI](https://heroui.com/)
 
 ## How to Use
 
 ### Install dependencies
-
-Use your preferred package manager (`npm`, `yarn`, `pnpm`, `bun`). Example using `pnpm`:
 
 ```bash
 pnpm install
@@ -24,19 +21,38 @@ pnpm install
 ### Run the development server
 
 ```bash
-pnpm run dev
+pnpm dev
 ```
 
-### Setup pnpm (optional)
-
-If you are using `pnpm`, you need to add the following code to your `.npmrc` file:
+### Build for production
 
 ```bash
-public-hoist-pattern[]=*@heroui/*
+pnpm build
 ```
 
-After modifying the `.npmrc` file, you need to run `pnpm install` again to ensure that the dependencies are installed correctly.
+Static output is written to `dist/`.
+
+### Deploy site (S3 + CloudFront)
+
+Infrastructure is managed by CDK under `cdk/`. Site files are synced with the AWS CLI (not `BucketDeployment`).
+
+```bash
+# Fill in from stack outputs (BucketName, DistributionId)
+export S3_BUCKET=your-bucket-name
+export CLOUDFRONT_DISTRIBUTION_ID=E1234ABCD
+
+pnpm deploy:site   # build → s3 sync → CloudFront invalidation
+# or separately:
+pnpm build && pnpm sync && pnpm invalidate
+```
+
+### Preview the production build
+
+```bash
+pnpm preview
+```
+
 
 ## License
 
-Licensed under the [MIT license](https://github.com/frontio-ai/vite-template/blob/main/LICENSE).
+Licensed under the [MIT license](./LICENSE).

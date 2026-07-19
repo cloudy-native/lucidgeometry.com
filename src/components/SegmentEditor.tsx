@@ -1,14 +1,3 @@
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Input,
-  Select,
-  SelectItem,
-  SelectSection,
-  Slider,
-} from "@heroui/react";
 import { Dice5, Plus, Share2 } from "lucide-react";
 import type React from "react";
 import { materialSections, type Segment } from "./Canvas";
@@ -393,6 +382,12 @@ interface SegmentEditorProps {
   onIsAnimatedChange: (isAnimated: boolean) => void;
 }
 
+const hdrisByGroup = availableHdris.reduce<Record<string, Hdri[]>>((acc, h) => {
+  if (!acc[h.group]) acc[h.group] = [];
+  acc[h.group].push(h);
+  return acc;
+}, {});
+
 const SegmentEditor: React.FC<SegmentEditorProps> = ({
   segments,
   onUpdate,
@@ -416,72 +411,55 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
 }) => {
   const RATIO_CAP = 64;
   return (
-    <div className="p-4 space-y-4">
-      <Card>
-        <CardHeader>
+    <div className="space-y-4 p-4">
+      <section className="card">
+        <div className="card-header">
           <h4 className="text-lg font-bold">Controls</h4>
-        </CardHeader>
-        <CardBody>
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-2">
-              <Button
-                onClick={onRandomize}
-                title="Randomize"
-                color="primary"
-                startContent={<Dice5 />}
-              >
-                Randomize
-              </Button>
-              <Button
-                onClick={onAdd}
-                title="Add Segment"
-                color="secondary"
-                startContent={<Plus />}
-              >
-                Add
-              </Button>
-              <Button
-                onClick={onShare}
-                title="Share"
-                color="success"
-                startContent={<Share2 />}
-              >
-                Share
-              </Button>
-            </div>
-            {/* <div>
-              <Checkbox isSelected={isAnimated} onValueChange={onIsAnimatedChange}>
-                Animate
-              </Checkbox>
-            </div> */}
+        </div>
+        <div className="card-body">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onRandomize} title="Randomize" className="btn btn-primary">
+              <Dice5 size={18} />
+              Randomize
+            </button>
+            <button type="button" onClick={onAdd} title="Add Segment" className="btn btn-secondary">
+              <Plus size={18} />
+              Add
+            </button>
+            <button type="button" onClick={onShare} title="Share" className="btn btn-success">
+              <Share2 size={18} />
+              Share
+            </button>
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
+      <section className="card">
+        <div className="card-header">
           <h4 className="text-lg font-bold">Wheels</h4>
-        </CardHeader>
-        <CardBody className="space-y-2">
-          <div className="grid grid-cols-12 gap-2 px-1 text-sm font-mono text-gray-400">
+        </div>
+        <div className="card-body space-y-2">
+          <div className="grid grid-cols-12 gap-2 px-1 font-mono text-sm text-zinc-400">
             <div className="col-span-2">Length</div>
             <div className="col-span-2">LFO (s)</div>
             <div className="col-span-5 text-center">Ratio</div>
             <div className="col-span-3">Axis</div>
           </div>
           {segments.map((segment) => (
-            <div
-              key={segment.id}
-              className="grid grid-cols-12 gap-2 items-center"
-            >
+            <div key={segment.id} className="grid grid-cols-12 items-center gap-2">
               <div className="col-span-2">
-                <Input
+                <input
                   type="number"
                   aria-label="Length"
-                  size="sm"
-                  value={String(segment.length)}
-                  onValueChange={(val) => {
-                    const parsed = Number(val);
+                  className="field-sm"
+                  value={Number.isFinite(segment.length) ? segment.length : ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "" || raw === "-" || raw === "+" || raw === ".") {
+                      return;
+                    }
+                    const parsed = Number(raw);
+                    if (!Number.isFinite(parsed)) return;
                     const newLength = parsed === 0 ? 1 : parsed;
                     onUpdate(segment.id, {
                       length: newLength,
@@ -490,20 +468,39 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
                         : segment.originalLength,
                     });
                   }}
+                  onBlur={(e) => {
+                    const parsed = Number(e.target.value);
+                    if (!Number.isFinite(parsed) || parsed === 0) {
+                      e.target.value = String(segment.length);
+                      if (!Number.isFinite(segment.length) || segment.length === 0) {
+                        onUpdate(segment.id, {
+                          length: 1,
+                          originalLength: segment.lfoPeriod ? 1 : segment.originalLength,
+                        });
+                      }
+                    }
+                  }}
                 />
               </div>
               <div className="col-span-2">
-                <Input
+                <input
                   type="number"
                   aria-label="LFO Period (seconds)"
-                  size="sm"
-                  min="0"
-                  step="0.1"
+                  className="field-sm"
+                  min={0}
+                  step={0.1}
                   value={
-                    segment.lfoPeriod ? String(segment.lfoPeriod / 1000) : "0"
+                    segment.lfoPeriod && Number.isFinite(segment.lfoPeriod)
+                      ? segment.lfoPeriod / 1000
+                      : 0
                   }
-                  onValueChange={(val) => {
-                    const periodSeconds = Number(val);
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const periodSeconds = Number(raw);
+                    if (!Number.isFinite(periodSeconds) || periodSeconds < 0) {
+                      return;
+                    }
                     onUpdate(segment.id, {
                       lfoPeriod:
                         periodSeconds > 0 ? periodSeconds * 1000 : undefined,
@@ -518,290 +515,337 @@ const SegmentEditor: React.FC<SegmentEditorProps> = ({
                 />
               </div>
               <div className="col-span-2">
-                <Input
+                <input
                   type="number"
                   aria-label="Numerator"
-                  size="sm"
+                  className="field-sm"
                   min={-RATIO_CAP}
                   max={RATIO_CAP}
-                  defaultValue={String(segment.speed.num)}
+                  defaultValue={segment.speed.num}
                   key={segment.id + "-num-" + segment.speed.num}
                   onBlur={(e) => {
                     const n = Number(e.target.value);
-                    if (!n) { e.target.value = String(segment.speed.num); return; }
-                    const clamped = Math.sign(n) * Math.min(RATIO_CAP, Math.max(1, Math.abs(n)));
+                    if (!Number.isFinite(n) || n === 0) {
+                      e.target.value = String(segment.speed.num);
+                      return;
+                    }
+                    const clamped =
+                      Math.sign(n) * Math.min(RATIO_CAP, Math.max(1, Math.abs(n)));
                     e.target.value = String(clamped);
-                    onUpdate(segment.id, { speed: { ...segment.speed, num: clamped } });
+                    onUpdate(segment.id, {
+                      speed: { ...segment.speed, num: clamped },
+                    });
                   }}
-                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
                 />
               </div>
               <div className="col-span-3">
-                <Input
+                <input
                   type="number"
                   aria-label="Denominator"
-                  size="sm"
-                  min="1"
+                  className="field-sm"
+                  min={1}
                   max={RATIO_CAP}
-                  value={String(segment.speed.den)}
-                  onValueChange={(val) =>
+                  value={
+                    Number.isFinite(segment.speed.den) ? segment.speed.den : ""
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const n = Number(raw);
+                    if (!Number.isFinite(n)) return;
                     onUpdate(segment.id, {
                       speed: {
                         ...segment.speed,
-                        den: Math.min(RATIO_CAP, Math.max(1, Number(val))),
+                        den: Math.min(RATIO_CAP, Math.max(1, n)),
                       },
-                    })
-                  }
+                    });
+                  }}
+                  onBlur={(e) => {
+                    const n = Number(e.target.value);
+                    if (!Number.isFinite(n) || n < 1) {
+                      e.target.value = String(segment.speed.den);
+                      if (!Number.isFinite(segment.speed.den) || segment.speed.den < 1) {
+                        onUpdate(segment.id, {
+                          speed: { ...segment.speed, den: 1 },
+                        });
+                      }
+                    }
+                  }}
                 />
               </div>
               <div className="col-span-3">
-                <Select
+                <select
                   aria-label="Axis"
-                  size="sm"
-                  selectedKeys={[segment.axis]}
+                  className="field-sm"
+                  value={segment.axis}
                   onChange={(e) =>
                     onUpdate(segment.id, {
                       axis: e.target.value as "x" | "y" | "z",
                     })
                   }
                 >
-                  <SelectItem key="x">X</SelectItem>
-                  <SelectItem key="y">Y</SelectItem>
-                  <SelectItem key="z">Z</SelectItem>
-                </Select>
+                  <option value="x">X</option>
+                  <option value="y">Y</option>
+                  <option value="z">Z</option>
+                </select>
               </div>
             </div>
           ))}
-        </CardBody>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
+      <section className="card">
+        <div className="card-header">
           <h4 className="text-lg font-bold">Display Options</h4>
-        </CardHeader>
-        <CardBody className="space-y-4">
-          <Slider
-            label="Rotation Speed"
-            minValue={0}
-            maxValue={5}
-            step={0.1}
-            value={gentleRotation}
-            onChange={(val) => onGentleRotationChange(val as number)}
-          />
-          <Slider
-            label="Thickness"
-            minValue={0.01}
-            maxValue={1.0}
-            step={0.01}
-            value={thickness}
-            onChange={(val) => onThicknessChange(val as number)}
-          />
-          {/* <Slider
-            label="Path Resolution"
-            minValue={50}
-            maxValue={2000}
-            step={10}
-            value={pathResolution}
-            onChange={(val) => onPathResolutionChange(val as number)}
-          /> */}
+        </div>
+        <div className="card-body space-y-4">
+          <div>
+            <div className="slider-label">
+              <span>Rotation Speed</span>
+              <span className="text-zinc-500">{gentleRotation.toFixed(1)}</span>
+            </div>
+            <input
+              type="range"
+              className="slider"
+              min={0}
+              max={5}
+              step={0.1}
+              value={gentleRotation}
+              onChange={(e) => onGentleRotationChange(Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <div className="slider-label">
+              <span>Thickness</span>
+              <span className="text-zinc-500">{thickness.toFixed(2)}</span>
+            </div>
+            <input
+              type="range"
+              className="slider"
+              min={0.01}
+              max={1}
+              step={0.01}
+              value={thickness}
+              onChange={(e) => onThicknessChange(Number(e.target.value))}
+            />
+          </div>
 
-          <Select
-            label="Environment"
-            selectedKeys={[hdri]}
-            onChange={(e) => onHdriChange(e.target.value)}
-          >
-            {Object.entries(
-              availableHdris.reduce<Record<string, Hdri[]>>((acc, h) => {
-                if (!acc[h.group]) acc[h.group] = [];
-                acc[h.group].push(h);
-                return acc;
-              }, {})
-            ).map(([group, items]) => (
-              <SelectSection key={group} title={group} showDivider>
-                {items.map((h) => (
-                  <SelectItem key={h.file}>{h.name}</SelectItem>
-                ))}
-              </SelectSection>
-            ))}
-          </Select>
-          <Select
-            label="Material"
-            selectedKeys={[material]}
-            onChange={(e) => onMaterialChange(e.target.value)}
-          >
-            {materialSections.map((section) => (
-              <SelectSection key={section.title} title={section.title}>
-                {section.materials.map((mat) => (
-                  <SelectItem key={mat.key}>{mat.name}</SelectItem>
-                ))}
-              </SelectSection>
-            ))}
-          </Select>
-        </CardBody>
-      </Card>
+          <div>
+            <label className="mb-1 block text-sm" htmlFor="hdri-select">
+              Environment
+            </label>
+            <select
+              id="hdri-select"
+              className="field"
+              value={hdri}
+              onChange={(e) => onHdriChange(e.target.value)}
+            >
+              {Object.entries(hdrisByGroup).map(([group, items]) => (
+                <optgroup key={group} label={group}>
+                  {items.map((h) => (
+                    <option key={h.file} value={h.file}>
+                      {h.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
 
-      <Card>
-        <CardHeader>
+          <div>
+            <label className="mb-1 block text-sm" htmlFor="material-select">
+              Material
+            </label>
+            <select
+              id="material-select"
+              className="field"
+              value={material}
+              onChange={(e) => onMaterialChange(e.target.value)}
+            >
+              {materialSections.map((section) => (
+                <optgroup key={section.title} label={section.title}>
+                  {section.materials.map((mat) => (
+                    <option key={mat.key} value={mat.key}>
+                      {mat.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-header">
           <h4 className="text-lg font-bold">Randomizer Configuration</h4>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-3 gap-x-2 gap-y-3 text-sm items-center">
-            <span className="font-mono text-gray-400 col-start-2 text-center">
-              Min
-            </span>
-            <span className="font-mono text-gray-400 text-center">Max</span>
+        </div>
+        <div className="card-body">
+          <div className="grid grid-cols-3 items-center gap-x-2 gap-y-3 text-sm">
+            <span className="col-start-2 text-center font-mono text-zinc-400">Min</span>
+            <span className="text-center font-mono text-zinc-400">Max</span>
 
-            <span className="text-sm">Segments</span>
-            <Input
+            <span>Segments</span>
+            <input
               type="number"
-              size="sm"
-              min="1"
+              className="field-sm"
+              min={1}
               aria-label="Segments min"
               max={randomizeConfig.countMax}
-              value={String(randomizeConfig.countMin)}
-              onValueChange={(val) =>
+              value={randomizeConfig.countMin}
+              onChange={(e) =>
                 setRandomizeConfig((c) => ({
                   ...c,
-                  countMin: Math.min(Math.max(1, Number(val)), c.countMax),
+                  countMin: Math.min(Math.max(1, Number(e.target.value)), c.countMax),
                 }))
               }
             />
-            <Input
+            <input
               type="number"
-              size="sm"
+              className="field-sm"
               min={Math.max(1, randomizeConfig.countMin)}
               aria-label="Segments max"
-              value={String(randomizeConfig.countMax)}
-              onValueChange={(val) =>
+              value={randomizeConfig.countMax}
+              onChange={(e) =>
                 setRandomizeConfig((c) => ({
                   ...c,
-                  countMax: Math.max(Math.max(1, Number(val)), c.countMin),
+                  countMax: Math.max(Math.max(1, Number(e.target.value)), c.countMin),
                 }))
               }
             />
 
-            <span className="text-sm">Length</span>
-            <Input
+            <span>Length</span>
+            <input
               type="number"
-              size="sm"
-              min="1"
+              className="field-sm"
+              min={1}
               aria-label="Length min"
               max={randomizeConfig.lengthMax}
-              value={String(randomizeConfig.lengthMin)}
-              onValueChange={(val) =>
+              value={randomizeConfig.lengthMin}
+              onChange={(e) =>
                 setRandomizeConfig((c) => ({
                   ...c,
-                  lengthMin: Math.max(1, Math.min(Number(val), c.lengthMax)),
+                  lengthMin: Math.max(1, Math.min(Number(e.target.value), c.lengthMax)),
                 }))
               }
             />
-            <Input
+            <input
               type="number"
-              size="sm"
+              className="field-sm"
               min={Math.max(1, randomizeConfig.lengthMin)}
               aria-label="Length max"
-              value={String(randomizeConfig.lengthMax)}
-              onValueChange={(val) =>
+              value={randomizeConfig.lengthMax}
+              onChange={(e) =>
                 setRandomizeConfig((c) => ({
                   ...c,
-                  lengthMax: Math.max(1, Math.max(Number(val), c.lengthMin)),
+                  lengthMax: Math.max(1, Math.max(Number(e.target.value), c.lengthMin)),
                 }))
               }
             />
 
-            <span className="text-sm">Numerator</span>
-            <Input
+            <span>Numerator</span>
+            <input
               type="number"
-              size="sm"
+              className="field-sm"
               aria-label="Numerator min"
-              defaultValue={String(randomizeConfig.numMin)}
+              defaultValue={randomizeConfig.numMin}
               key={"numMin-" + randomizeConfig.numMin}
               onBlur={(e) => {
                 const n = Number(e.target.value);
-                if (!n) { e.target.value = String(randomizeConfig.numMin); return; }
+                if (!n) {
+                  e.target.value = String(randomizeConfig.numMin);
+                  return;
+                }
                 setRandomizeConfig((c) => ({ ...c, numMin: Math.min(n, c.numMax) }));
               }}
-              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
             />
-            <Input
+            <input
               type="number"
-              size="sm"
+              className="field-sm"
               aria-label="Numerator max"
-              defaultValue={String(randomizeConfig.numMax)}
+              defaultValue={randomizeConfig.numMax}
               key={"numMax-" + randomizeConfig.numMax}
               onBlur={(e) => {
                 const n = Number(e.target.value);
-                if (!n) { e.target.value = String(randomizeConfig.numMax); return; }
+                if (!n) {
+                  e.target.value = String(randomizeConfig.numMax);
+                  return;
+                }
                 setRandomizeConfig((c) => ({ ...c, numMax: Math.max(n, c.numMin) }));
               }}
-              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
             />
 
-            <span className="text-sm">Denominator</span>
-            <Input
+            <span>Denominator</span>
+            <input
               type="number"
-              size="sm"
-              min="1"
+              className="field-sm"
+              min={1}
               aria-label="Denominator min"
               max={randomizeConfig.denMax}
-              value={String(randomizeConfig.denMin)}
-              onValueChange={(val) =>
+              value={randomizeConfig.denMin}
+              onChange={(e) =>
                 setRandomizeConfig((c) => ({
                   ...c,
-                  denMin: Math.min(Math.max(1, Number(val)), c.denMax),
+                  denMin: Math.min(Math.max(1, Number(e.target.value)), c.denMax),
                 }))
               }
             />
-            <Input
+            <input
               type="number"
-              size="sm"
+              className="field-sm"
               aria-label="Denominator max"
-              value={String(randomizeConfig.denMax)}
+              value={randomizeConfig.denMax}
               min={Math.max(1, randomizeConfig.denMin)}
-              onValueChange={(val) =>
+              onChange={(e) =>
                 setRandomizeConfig((c) => ({
                   ...c,
-                  denMax: Math.max(Math.max(1, Number(val)), c.denMin),
+                  denMax: Math.max(Math.max(1, Number(e.target.value)), c.denMin),
                 }))
               }
             />
 
-            <span className="text-sm">LFO Period (s)</span>
-            <Input
+            <span>LFO Period (s)</span>
+            <input
               type="number"
-              size="sm"
-              min="0"
-              step="1"
+              className="field-sm"
+              min={0}
+              step={1}
               aria-label="LFO Period min"
               max={randomizeConfig.lfoPeriodMax}
-              value={String(randomizeConfig.lfoPeriodMin)}
-              onValueChange={(val) =>
+              value={randomizeConfig.lfoPeriodMin}
+              onChange={(e) =>
                 setRandomizeConfig((c) => ({
                   ...c,
-                  lfoPeriodMin: Math.min(
-                    Math.max(0, Number(val)),
-                    c.lfoPeriodMax,
-                  ),
+                  lfoPeriodMin: Math.min(Math.max(0, Number(e.target.value)), c.lfoPeriodMax),
                 }))
               }
             />
-            <Input
+            <input
               type="number"
-              size="sm"
+              className="field-sm"
               min={randomizeConfig.lfoPeriodMin}
-              step="1"
+              step={1}
               aria-label="LFO Period max"
-              value={String(randomizeConfig.lfoPeriodMax)}
-              onValueChange={(val) =>
+              value={randomizeConfig.lfoPeriodMax}
+              onChange={(e) =>
                 setRandomizeConfig((c) => ({
                   ...c,
-                  lfoPeriodMax: Math.max(Number(val), c.lfoPeriodMin),
+                  lfoPeriodMax: Math.max(Number(e.target.value), c.lfoPeriodMin),
                 }))
               }
             />
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 };

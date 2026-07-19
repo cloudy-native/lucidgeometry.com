@@ -1,3 +1,8 @@
+---
+layout: ../layouts/MarkdownLayout.astro
+title: Docs
+---
+
 # What is Lucid Geometry?
 
 While pure geometry speaks in the language of perfection, its voice can feel distant. Here, we coax a more organic, lucid flow from its rigid forms. This application is a digital canvas where simple rules blossom into surprising and intricate beauty.

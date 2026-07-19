@@ -247,6 +247,73 @@ interface CanvasProps {
   pathResolution?: number;
 }
 
+/** Normalize path to a fixed world size; radius is thickness / scale so visual
+ *  tube radius tracks the Thickness slider in both static and LFO rebuilds. */
+const TARGET_PATH_SIZE = 10;
+
+function rebuildTubeFromPoints(
+  mesh: THREE.Mesh,
+  points: THREE.Vector3[],
+  thickness: number,
+  options?: {
+    controls?: OrbitControls | null;
+    recenter?: boolean;
+    light?: THREE.DirectionalLight | null;
+  },
+) {
+  const boundingBox = new THREE.Box3().setFromPoints(points);
+  const size = boundingBox.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const scale = maxDim > 0 ? TARGET_PATH_SIZE / maxDim : 1;
+
+  const oldGeometry = mesh.geometry;
+  mesh.geometry = new THREE.TubeGeometry(
+    new THREE.CatmullRomCurve3(points),
+    points.length * 2,
+    thickness / scale,
+    8,
+    true,
+  );
+  oldGeometry.dispose();
+  mesh.scale.setScalar(scale);
+
+  if (options?.recenter && options.controls) {
+    const center = new THREE.Vector3();
+    boundingBox.getCenter(center);
+    options.controls.target.copy(center);
+  }
+
+  if (options?.light) {
+    const light = options.light;
+    const scaledMaxDim = TARGET_PATH_SIZE * 1.2;
+    light.shadow.camera.left = -scaledMaxDim;
+    light.shadow.camera.right = scaledMaxDim;
+    light.shadow.camera.top = scaledMaxDim;
+    light.shadow.camera.bottom = -scaledMaxDim;
+    light.shadow.camera.near = 0.1;
+    light.shadow.camera.far = Math.max(scaledMaxDim * 4, 1000);
+    light.shadow.camera.updateProjectionMatrix();
+  }
+}
+
+function disposeObjectMaterial(material: THREE.Material | THREE.Material[]) {
+  if (Array.isArray(material)) {
+    material.forEach((m) => m.dispose());
+  } else {
+    material.dispose();
+  }
+}
+
+function disposeEnvTexture(
+  scene: THREE.Scene,
+  texture: THREE.Texture | null | undefined,
+) {
+  if (!texture) return;
+  if (scene.background === texture) scene.background = null;
+  if (scene.environment === texture) scene.environment = null;
+  texture.dispose();
+}
+
 const Canvas: React.FC<CanvasProps> = ({
   segments,
   gentleRotation,
@@ -257,6 +324,8 @@ const Canvas: React.FC<CanvasProps> = ({
 }) => {
   const baseSegmentsRef = useRef<Segment[]>(segments);
   const lfoStartTimeRef = useRef<number | null>(null);
+  const hdriGenerationRef = useRef(0);
+  const envTextureRef = useRef<THREE.Texture | null>(null);
 
   useEffect(() => {
     baseSegmentsRef.current = segments.map((s) => ({
@@ -266,14 +335,6 @@ const Canvas: React.FC<CanvasProps> = ({
     }));
     lfoStartTimeRef.current = null;
   }, [segments]);
-
-  useEffect(() => {
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load("/textures/scratches.jpg", (texture) => {
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-    });
-  }, []);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -289,6 +350,7 @@ const Canvas: React.FC<CanvasProps> = ({
   const gentleRotationRef = useRef(gentleRotation);
   const thicknessRef = useRef(thickness);
   const pathResolutionRef = useRef(pathResolution);
+  const prevSegmentsRef = useRef<Segment[] | null>(null);
 
   // Keep refs in sync so the animate loop reads the latest values
   useEffect(() => {
@@ -311,6 +373,8 @@ const Canvas: React.FC<CanvasProps> = ({
 
       const width = mount.clientWidth;
       const height = mount.clientHeight;
+
+      if (width <= 0 || height <= 0) return;
 
       if (
         renderer.domElement.width !== width ||
@@ -413,26 +477,11 @@ const Canvas: React.FC<CanvasProps> = ({
           pathResolutionRef.current,
         );
         if (points.length > 0) {
-          // Calculate scale factor first
-          const boundingBox = new THREE.Box3().setFromPoints(points);
-          const size = boundingBox.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const targetSize = 10;
-          const scale = maxDim > 0 ? targetSize / maxDim : 1;
-
-          const oldGeometry = pathTubeRef.current.geometry;
-          const newGeometry = new THREE.TubeGeometry(
-            new THREE.CatmullRomCurve3(points),
-            points.length * 2,
-            thicknessRef.current / scale, // Compensate for scaling
-            8,
-            true,
+          rebuildTubeFromPoints(
+            pathTubeRef.current,
+            points,
+            thicknessRef.current,
           );
-          pathTubeRef.current.geometry = newGeometry;
-          oldGeometry.dispose();
-
-          // Apply dynamic scaling to maintain consistent visual size during LFO
-          pathTubeRef.current.scale.setScalar(scale);
         }
       }
 
@@ -450,72 +499,63 @@ const Canvas: React.FC<CanvasProps> = ({
       }
       cancelAnimationFrame(animationFrameId);
       pathTube.geometry.dispose();
-      tubeMaterial.dispose();
+      disposeObjectMaterial(pathTube.material);
+      disposeEnvTexture(scene, envTextureRef.current);
+      envTextureRef.current = null;
       controls.dispose();
       renderer.dispose();
+      pathTubeRef.current = null;
+      sceneRef.current = null;
     };
   }, [handleResize]);
 
+  // Orbit auto-rotate only — do not rebuild geometry when speed changes
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    controlsRef.current.autoRotate = gentleRotation > 0;
+    controlsRef.current.autoRotateSpeed = gentleRotation;
+  }, [gentleRotation]);
+
+  // Static path rebuild (segments / thickness / resolution)
   useEffect(() => {
     if (!pathTubeRef.current || !controlsRef.current) return;
 
-    controlsRef.current.autoRotate = gentleRotation > 0;
-    controlsRef.current.autoRotateSpeed = gentleRotation;
-
     const points = generatePathPoints(baseSegmentsRef.current, pathResolution);
+    if (points.length === 0) return;
 
-    if (points.length > 0) {
-      const oldTubeGeometry = pathTubeRef.current.geometry;
-      const tubeCurve = new THREE.CatmullRomCurve3(points);
-      pathTubeRef.current.geometry = new THREE.TubeGeometry(
-        tubeCurve,
-        points.length * 2,
-        thickness,
-        8,
-        true,
-      );
-      oldTubeGeometry.dispose();
+    // Recenter on first build and whenever segments change; not on thickness-only
+    const shouldRecenter =
+      prevSegmentsRef.current === null || prevSegmentsRef.current !== segments;
+    prevSegmentsRef.current = segments;
 
-      const boundingBox = new THREE.Box3().setFromPoints(points);
-      const center = new THREE.Vector3();
-      boundingBox.getCenter(center);
-      if (!controlsRef.current.target.equals(center)) {
-        controlsRef.current.target.lerp(center, 0.1);
-      }
-
-      // Normalize the mesh scale to keep visual size consistent
-      const size = boundingBox.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const targetSize = 10; // Standard size in world units
-      const scale = maxDim > 0 ? targetSize / maxDim : 1;
-      pathTubeRef.current.scale.setScalar(scale);
-
-      if (directionalLightRef.current) {
-        const light = directionalLightRef.current;
-        // Use the scaled size for shadow calculations
-        const scaledMaxDim = targetSize * 1.2;
-        light.shadow.camera.left = -scaledMaxDim;
-        light.shadow.camera.right = scaledMaxDim;
-        light.shadow.camera.top = scaledMaxDim;
-        light.shadow.camera.bottom = -scaledMaxDim;
-        light.shadow.camera.near = 0.1;
-        light.shadow.camera.far = Math.max(scaledMaxDim * 4, 1000);
-
-        light.shadow.camera.updateProjectionMatrix();
-      }
-    }
-  }, [gentleRotation, thickness, pathResolution]);
+    rebuildTubeFromPoints(pathTubeRef.current, points, thickness, {
+      controls: controlsRef.current,
+      recenter: shouldRecenter,
+      light: directionalLightRef.current,
+    });
+  }, [segments, thickness, pathResolution]);
 
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
 
+    const generation = ++hdriGenerationRef.current;
     const onLoad = (texture: THREE.DataTexture) => {
+      if (generation !== hdriGenerationRef.current) {
+        texture.dispose();
+        return;
+      }
       texture.mapping = THREE.EquirectangularReflectionMapping;
+      const previous = envTextureRef.current;
       scene.background = texture;
       scene.environment = texture;
+      envTextureRef.current = texture;
+      if (previous && previous !== texture) {
+        previous.dispose();
+      }
     };
-    const onError = (err: unknown) => console.error(`Failed to load "${hdri}":`, err);
+    const onError = (err: unknown) =>
+      console.error(`Failed to load "${hdri}":`, err);
     if (hdri.endsWith(".exr")) {
       new EXRLoader().setPath("/").load(hdri, onLoad, undefined, onError);
     } else {
@@ -533,16 +573,12 @@ const Canvas: React.FC<CanvasProps> = ({
     const selectedMaterial = allMaterials.find((m) => m.key === material);
 
     if (selectedMaterial) {
+      const previous = tubeMesh.material;
       const newMaterial = new THREE.MeshPhysicalMaterial(
         selectedMaterial.props,
       );
-
-      // if (selectedMaterial.key === 'gold' && scratchTexture) {
-      //   newMaterial.bumpMap = scratchTexture;
-      //   newMaterial.bumpScale = 0.1; // Adjust for subtle effect
-      // }
-
       tubeMesh.material = newMaterial;
+      disposeObjectMaterial(previous);
     }
   }, [material]);
 
@@ -565,20 +601,20 @@ const Canvas: React.FC<CanvasProps> = ({
       const isNowFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isNowFullscreen);
 
-      if (!isNowFullscreen) {
-        setTimeout(() => {
-          handleResize();
-        }, 150);
-      }
+      // Resize on both enter and exit — layout settles after a short delay
+      requestAnimationFrame(() => {
+        handleResize();
+        setTimeout(handleResize, 150);
+      });
     };
 
     const handleMouseMove = () => {
       setShowControls(true);
-      
+
       if (hideControlsTimeoutRef.current) {
         clearTimeout(hideControlsTimeoutRef.current);
       }
-      
+
       hideControlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
       }, 2000);

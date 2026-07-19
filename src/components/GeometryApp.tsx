@@ -1,9 +1,7 @@
-import { addToast } from "@heroui/toast";
 import { Dice5, Share2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Canvas, { type Segment } from "@/components/Canvas";
 import SegmentEditor, { availableHdris } from "@/components/SegmentEditor";
-import DefaultLayout from "@/layouts/default";
 
 const ensureNonZero = (v: number) => (v === 0 ? 1 : v);
 const ensureNonZeroSpeed = (s: { num: number; den: number }) => ({
@@ -24,7 +22,9 @@ const defaultRandomizeConfig = {
   lfoPeriodMax: 50,
 };
 
-const generateRandomSegments = (config: typeof defaultRandomizeConfig): Segment[] => {
+const generateRandomSegments = (
+  config: typeof defaultRandomizeConfig,
+): Segment[] => {
   const {
     countMin,
     countMax,
@@ -39,10 +39,21 @@ const generateRandomSegments = (config: typeof defaultRandomizeConfig): Segment[
   } = config;
 
   const getRandomInt = (min: number, max: number): number => {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    const value = Math.floor(Math.random() * (max - min + 1)) + min;
-    return value === 0 ? getRandomInt(min, max) : value;
+    let lo = Math.ceil(min);
+    let hi = Math.floor(max);
+    if (lo > hi) [lo, hi] = [hi, lo];
+
+    // Avoid infinite retry when the only integer in range is 0
+    if (lo === 0 && hi === 0) return 1;
+
+    for (let attempt = 0; attempt < 64; attempt++) {
+      const value = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+      if (value !== 0) return value;
+    }
+    // Bounded fallback: prefer a non-zero endpoint
+    if (hi !== 0) return hi;
+    if (lo !== 0) return lo;
+    return 1;
   };
 
   const shuffle = <T,>(array: T[]): T[] => {
@@ -51,6 +62,23 @@ const generateRandomSegments = (config: typeof defaultRandomizeConfig): Segment[
       [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+  };
+
+  /** Prefer den ≠ num; if the den range cannot differ, nudge or accept equal. */
+  const pickDenominator = (num: number, dMin: number, dMax: number): number => {
+    let lo = Math.ceil(dMin);
+    let hi = Math.floor(dMax);
+    if (lo > hi) [lo, hi] = [hi, lo];
+    if (lo < 1) lo = 1;
+    if (hi < 1) hi = 1;
+
+    for (let attempt = 0; attempt < 32; attempt++) {
+      const den = getRandomInt(lo, hi);
+      if (den !== num) return den;
+    }
+    // Ranges collapsed to a single value equal to num — force a neighbor
+    if (num !== 1) return 1;
+    return 2;
   };
 
   const count = Math.floor(Math.random() * (countMax - countMin + 1)) + countMin;
@@ -72,19 +100,16 @@ const generateRandomSegments = (config: typeof defaultRandomizeConfig): Segment[
   }
 
   const usedRatios = new Set<string>();
-  
-  const generateUniqueRatio = (maxAttempts = 50): { num: number; den: number } => {
+
+  const generateUniqueRatio = (
+    maxAttempts = 50,
+  ): { num: number; den: number } => {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const num = getRandomInt(numMin, numMax);
-      let den = getRandomInt(denMin, denMax);
+      const den = pickDenominator(num, denMin, denMax);
 
-      // Avoid num === den
-      while (num === den) {
-        den = getRandomInt(denMin, denMax);
-      }
-
-      // Normalize the ratio to check for duplicates
-      const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+      const gcd = (a: number, b: number): number =>
+        b === 0 ? a : gcd(b, a % b);
       const divisor = gcd(Math.abs(num), Math.abs(den));
       const normalizedNum = num / divisor;
       const normalizedDen = den / divisor;
@@ -95,20 +120,19 @@ const generateRandomSegments = (config: typeof defaultRandomizeConfig): Segment[
         return { num, den };
       }
     }
-    
-    // If we can't find a unique ratio after max attempts, just return a random one
+
     const num = getRandomInt(numMin, numMax);
-    let den = getRandomInt(denMin, denMax);
-    while (num === den) {
-      den = getRandomInt(denMin, denMax);
-    }
+    const den = pickDenominator(num, denMin, denMax);
     return { num, den };
   };
 
   return Array.from({ length: count }, (_, i) => {
     const speed = generateUniqueRatio();
     const length = getRandomInt(lengthMin, lengthMax);
-    const lfoPeriod = (Math.floor(Math.random() * (lfoPeriodMax - lfoPeriodMin + 1)) + lfoPeriodMin) * 1000;
+    const lfoPeriod =
+      (Math.floor(Math.random() * (lfoPeriodMax - lfoPeriodMin + 1)) +
+        lfoPeriodMin) *
+      1000;
     const lfoPhase = Math.random() * 2 * Math.PI;
 
     return {
@@ -141,14 +165,12 @@ const getInitialState = () => {
   if (config) {
     try {
       const decoded = JSON.parse(atob(config));
-      // Basic validation to ensure the decoded object has the expected shape
       if (
         decoded.segments &&
         Array.isArray(decoded.segments) &&
         decoded.hdri &&
         decoded.material
       ) {
-        // Migration for old links that don't have the full path
         if (!decoded.hdri.startsWith("hdri/")) {
           decoded.hdri = `hdri/${decoded.hdri}`;
         }
@@ -160,7 +182,7 @@ const getInitialState = () => {
           })),
           hdri: decoded.hdri,
           material: decoded.material,
-          thickness: decoded.thickness ?? 0.1, // Fallback for old links
+          thickness: decoded.thickness ?? 0.1,
         };
       }
     } catch (e) {
@@ -171,7 +193,7 @@ const getInitialState = () => {
   return defaultState;
 };
 
-export default function IndexPage() {
+export default function GeometryApp() {
   const [initialState] = useState(getInitialState);
   const [segments, setSegments] = useState<Segment[]>(initialState.segments);
   const [gentleRotation, setGentleRotation] = useState(0.5);
@@ -181,6 +203,17 @@ export default function IndexPage() {
   const [isAnimated, setIsAnimated] = useState(false);
   const [pathResolution, setPathResolution] = useState(500);
   const [randomizeConfig, setRandomizeConfig] = useState(defaultRandomizeConfig);
+  const [toast, setToast] = useState<{
+    title: string;
+    description: string;
+    tone: "success" | "danger";
+  } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 3000);
+    return () => window.clearTimeout(id);
+  }, [toast]);
 
   const handleShare = () => {
     const stateToShare = {
@@ -195,26 +228,26 @@ export default function IndexPage() {
     url.searchParams.set("config", base64String);
     navigator.clipboard.writeText(url.toString()).then(
       () => {
-        addToast({
+        setToast({
           title: "Link copied",
           description: "Link copied to clipboard successfully",
-          color: "success",
+          tone: "success",
         });
       },
       (err) => {
         console.error("Could not copy text: ", err);
-        addToast({
+        setToast({
           title: "Error",
           description: "Failed to copy link.",
-          color: "danger",
+          tone: "danger",
         });
-      }
+      },
     );
   };
 
   const updateSegment = (
     id: string,
-    newValues: Partial<Omit<Segment, "id">>
+    newValues: Partial<Omit<Segment, "id">>,
   ) => {
     setSegments((prevSegments) =>
       prevSegments.map((s) => {
@@ -224,7 +257,7 @@ export default function IndexPage() {
           merged.speed = ensureNonZeroSpeed(merged.speed);
         }
         return merged;
-      })
+      }),
     );
   };
 
@@ -240,75 +273,68 @@ export default function IndexPage() {
   };
 
   return (
-    <DefaultLayout>
-      <div className="flex flex-col h-full">
-        <div className="text-center pt-8 pb-4">
-          <h1 className="text-4xl md:text-5xl font-bold mb-2">
-            Lucid Geometry
-          </h1>
-          <p className="text-gray-400 flex items-center justify-center space-x-1.5">
-            <span>Click</span>
-            <Dice5 className="inline-block h-5 w-5" />
-            <span>
-              for a random config, set the background and material. Click
-            </span>
-            <Share2 className="inline-block h-5 w-5" />
-            <span>to share.</span>
-          </p>
+    <div className="flex h-full min-h-0 flex-col">
+      {toast && (
+        <div
+          role="status"
+          className={`fixed right-4 top-20 z-50 max-w-sm rounded-lg border px-4 py-3 shadow-lg ${
+            toast.tone === "success"
+              ? "border-emerald-500/40 bg-emerald-950 text-emerald-100"
+              : "border-red-500/40 bg-red-950 text-red-100"
+          }`}
+        >
+          <p className="font-semibold">{toast.title}</p>
+          <p className="text-sm opacity-90">{toast.description}</p>
         </div>
-        {/* <Alert>
-          <div className="text-xs flex items-center justify-center space-x-4 md:space-x-6">
-            <div className="flex items-center space-x-2">
-              <MousePointer2 size={14} />
-              <span>Left-click: Rotate</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <ZoomIn size={14} />
-              <span>Scroll: Zoom</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Move size={14} />
-              <span>Right-click: Pan</span>
-            </div>
-          </div>
-        </Alert> */}
-        <div className="flex-grow w-full flex flex-col md:flex-row gap-4">
-          <div className="w-full md:w-2/5 lg:w-1/3 rounded-lg overflow-y-auto">
-            <SegmentEditor
-              segments={segments}
-              onUpdate={updateSegment}
-              onAdd={addSegment}
-              onRandomize={randomizeSegments}
-              randomizeConfig={randomizeConfig}
-              setRandomizeConfig={setRandomizeConfig}
-              gentleRotation={gentleRotation}
-              onGentleRotationChange={setGentleRotation}
-              hdri={hdri}
-              onHdriChange={setHdri}
-              material={material}
-              onMaterialChange={setMaterial}
-              thickness={thickness}
-              onThicknessChange={setThickness}
-              pathResolution={pathResolution}
-              onPathResolutionChange={setPathResolution}
-              onShare={handleShare}
-              isAnimated={isAnimated}
-              onIsAnimatedChange={setIsAnimated}
-            />
-          </div>
-          <div className="flex-grow relative rounded-lg overflow-hidden">
-            <Canvas
-              segments={segments}
-              gentleRotation={gentleRotation}
-              hdri={hdri}
-              material={material}
-              thickness={thickness}
-              isAnimated={isAnimated}
-              pathResolution={pathResolution}
-            />
-          </div>
+      )}
+
+      <div className="pb-4 pt-8 text-center">
+        <h1 className="mb-2 text-4xl font-bold md:text-5xl">Lucid Geometry</h1>
+        <p className="flex items-center justify-center space-x-1.5 text-zinc-400">
+          <span>Click</span>
+          <Dice5 className="inline-block h-5 w-5" />
+          <span>for a random config, set the background and material. Click</span>
+          <Share2 className="inline-block h-5 w-5" />
+          <span>to share.</span>
+        </p>
+      </div>
+
+      <div className="flex w-full min-h-0 flex-grow flex-col gap-4 md:flex-row">
+        <div className="w-full overflow-y-auto rounded-lg md:w-2/5 lg:w-1/3">
+          <SegmentEditor
+            segments={segments}
+            onUpdate={updateSegment}
+            onAdd={addSegment}
+            onRandomize={randomizeSegments}
+            randomizeConfig={randomizeConfig}
+            setRandomizeConfig={setRandomizeConfig}
+            gentleRotation={gentleRotation}
+            onGentleRotationChange={setGentleRotation}
+            hdri={hdri}
+            onHdriChange={setHdri}
+            material={material}
+            onMaterialChange={setMaterial}
+            thickness={thickness}
+            onThicknessChange={setThickness}
+            pathResolution={pathResolution}
+            onPathResolutionChange={setPathResolution}
+            onShare={handleShare}
+            isAnimated={isAnimated}
+            onIsAnimatedChange={setIsAnimated}
+          />
+        </div>
+        <div className="relative min-h-[50vh] flex-grow overflow-hidden rounded-lg md:min-h-0">
+          <Canvas
+            segments={segments}
+            gentleRotation={gentleRotation}
+            hdri={hdri}
+            material={material}
+            thickness={thickness}
+            isAnimated={isAnimated}
+            pathResolution={pathResolution}
+          />
         </div>
       </div>
-    </DefaultLayout>
+    </div>
   );
 }

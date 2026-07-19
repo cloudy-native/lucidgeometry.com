@@ -1,0 +1,98 @@
+---
+import { siteConfig } from "@/config/site";
+import ThemeSwitch from "@/components/ThemeSwitch";
+
+const pathname = Astro.url.pathname;
+---
+
+<header class="sticky top-0 z-40 w-full border-b border-zinc-200/80 bg-white/80 backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-950/80">
+  <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+    <div class="flex items-center gap-6">
+      <a href="/" class="font-bold text-inherit">LucidGeometry.com</a>
+      <div class="hidden items-center gap-4 lg:flex">
+        {
+          siteConfig.navItems.map((item) => {
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+            return (
+              <a
+                href={item.href}
+                class:list={[
+                  "text-sm transition-colors hover:text-blue-500",
+                  isActive
+                    ? "font-medium text-blue-600 dark:text-blue-400"
+                    : "text-zinc-700 dark:text-zinc-300",
+                ]}
+              >
+                {item.label}
+              </a>
+            );
+          })
+        }
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <a
+        href={siteConfig.links.github}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="GitHub"
+        class="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path>
+          <path d="M9 18c-4.51 2-5-2-7-2"></path>
+        </svg>
+      </a>
+      <ThemeSwitch client:load />
+
+      <details class="relative lg:hidden">
+        <summary class="list-none cursor-pointer rounded-md p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
+          <span class="sr-only">Open menu</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="4" x2="20" y1="12" y2="12"></line>
+            <line x1="4" x2="20" y1="6" y2="6"></line>
+            <line x1="4" x2="20" y1="18" y2="18"></line>
+          </svg>
+        </summary>
+        <div class="absolute right-0 mt-2 w-44 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+          {
+            siteConfig.navMenuItems.map((item) => (
+              <a
+                href={item.href}
+                class="block rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </div>
+      </details>
+    </div>
+  </nav>
+</header>
